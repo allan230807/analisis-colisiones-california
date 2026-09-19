@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.csv
+*.xlsx
+*.hyper
+data/
+.env
+*.sqlite
+.DS_Store
