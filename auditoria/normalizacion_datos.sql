@@ -1,5 +1,5 @@
 -- ============================================================
--- PIPELINE DE NORMALIZACIÓN Y MODELADO DIMENSIONAL SWITRS (2016-2021)
+-- NORMALIZACIÓN Y MODELADO DIMENSIONAL SWITRS (2016-2021)
 -- ============================================================
 -- Proyecto: Análisis y Perfil de Siniestralidad Vehicular en California
 -- Motor: DuckDB (Procesamiento analítico columnar vectorial)
