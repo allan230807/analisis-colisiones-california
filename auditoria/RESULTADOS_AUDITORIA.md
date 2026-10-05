@@ -68,18 +68,3 @@ que documenta la acción futura sin ejecutarla. Cero DDL en auditoría.
 **Decisión (10 dimensiones):** `dim_fecha · dim_county (nueva, 58) · dim_severidad · dim_entorno (clima+luz) · dim_vial (superficie+condición+control) · dim_tipo_colision · dim_causa (factor+pcf, deduplicada) · dim_grado_lesion · dim_actor (sexo+bandas edad) · dim_vehiculo`. Flags peaton/bicicleta/moto/camión/alcohol como TINYINT; geo 1:0..1; `vehicle_make`, `primary_road`, `officer_id` degenerados; surrogate entero determinista.
 
 ---
-
-## Correcciones v1→v2 (las 10 del QA, aplicadas y verificadas)
-
-1. Encabezado `"""` → comentarios `--` (era syntax error en línea 1).
-2. `ATTACH` canónico `(TYPE sqlite, READ_ONLY)` + `INSTALL/LOAD sqlite`.
-3. `UNION ALL + WITH por rama` → un solo `WITH` al inicio o `EXISTS` sin CTE.
-4. `GROUPING SETS + COALESCE(anio,'TOTAL')` → GROUP BY simple + total aparte.
-5. Calendario `range(2192)` ambiguo → `RANGE(DATE'2016-01-01', DATE'2022-01-01', INTERVAL 1 DAY)` = 2.192 exactos.
-6. `STRING_AGG` → forma canónica con literal + `ORDER BY` determinista.
-7. `SUM(COUNT(*)) OVER ()` en línea → pct sobre CTE.
-8. Filtro periodo en TODO lo de collisions (`>= '2016-01-01' AND < '2022-01-01'` como TEXT ISO; `DATE` solo en RANGE).
-9. Sexo con `LOWER(TRIM())` + NULL separado (`NOT IN` con NULL = UNKNOWN).
-10. `ROW_NUMBER` determinista + cierre único `SELECT ... AS decision_normalizacion`, sin DDL.
-
-**Verificación de utilidad (DuckDB, 2026-10-05):** los 6 scripts ejecutan de punta a punta con `EXIT:0` y cero `Binder/Syntax Error`. Incluye corrección propia de revisión final: `VARCHAR >= DATE` fallaba → literales ISO como TEXT (lexicográfico = cronológico).
