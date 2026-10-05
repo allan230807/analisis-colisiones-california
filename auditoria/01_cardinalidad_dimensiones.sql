@@ -7,8 +7,6 @@ Investigación: Perfiles de riesgo en colisiones de tránsito en California,
 Escuela de Estadística y Ciencias Actuariales (EECA-UCV) — Computación II
 ===============================================================================
 
-CONTEXTO
---------
 Este script valida empíricamente que las dimensiones propuestas en el diseño
 del esquema estrella tienen cardinalidad acotada (< 32,767 valores distintos),
 lo que justifica el uso de SMALLINT como tipo de dato para las llaves foráneas.
