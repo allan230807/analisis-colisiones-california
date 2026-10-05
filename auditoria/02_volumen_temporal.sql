@@ -26,11 +26,17 @@ GROUP BY substr(collision_date, 1, 4)
 ORDER BY anio;
 
 -- T03 Parties por anio (anio heredado de collisions via EXISTS; sin GROUPING SETS).
-SELECT CAST(substr(c.collision_date, 1, 4) AS INTEGER) AS anio, COUNT(*) AS n_partes
+SELECT CAST(substr(c.collision_date, 1, 4) AS INTEGER) AS anio,
+       COUNT(*) AS n_partes
 FROM sw.parties AS p
-JOIN sw.collisions AS c ON c.case_id = p.case_id
-WHERE c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01'
-GROUP BY substr(c.collision_date, 1, 4)
+WHERE EXISTS (
+    SELECT 1
+    FROM sw.collisions AS c
+    WHERE c.case_id = p.case_id
+      AND c.collision_date >= '2016-01-01'
+      AND c.collision_date < '2022-01-01'
+)
+GROUP BY anio
 ORDER BY anio;
 
 -- T04 Victims por anio (mismo patron).
