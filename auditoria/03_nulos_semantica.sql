@@ -12,7 +12,7 @@ ATTACH 'data/raw/switrs.sqlite' AS sw (TYPE sqlite, READ_ONLY);
 SELECT 'collisions.alcohol_involved' AS columna, COUNT(*) AS total,
        SUM(CASE WHEN alcohol_involved IS NULL THEN 1 ELSE 0 END) AS n_nulos,
        ROUND(100.0 * SUM(CASE WHEN alcohol_involved IS NULL THEN 1 ELSE 0 END) / COUNT(*), 2) AS pct_nulos,
-       'REGLA T6: BOOLEAN NOT NULL; COALESCE(alcohol_involved,0); NULL=sin registro=0' AS regla_normalizacion
+       'REGLA T6: BOOLEAN NOT NULL; COALESCE(alcohol_involved,0); NULL=desconocido' AS regla_normalizacion
 FROM sw.collisions WHERE collision_date >= '2016-01-01' AND collision_date < '2022-01-01'
 UNION ALL
 SELECT 'collisions.pedestrian_collision', COUNT(*),
