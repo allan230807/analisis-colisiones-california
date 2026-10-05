@@ -7,4 +7,4 @@ data/
 .env
 *.sqlite
 .DS_Store
-.vscode
+.vscode/
