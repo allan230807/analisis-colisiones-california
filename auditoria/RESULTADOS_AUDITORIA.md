@@ -1,6 +1,5 @@
 # Resultados de Auditoría v2 — Fase 1: Diseño Conceptual del Esquema Estrella
 
-**Fecha:** 2026-10-05 (v2; supersede v1 del 2026-10-04)
 **Base:** SWITRS California · periodo de estudio 2016-2021
 **Motor:** DuckDB + `ATTACH sqlite READ_ONLY` (SQLite puro hace timeout sobre 9-18M de filas)
 **Alcance:** solo SELECTs de diagnóstico. Cada script cierra con `DECISION_NORMALIZACION`
