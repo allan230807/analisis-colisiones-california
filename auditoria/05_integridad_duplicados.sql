@@ -107,8 +107,8 @@ HAVING COUNT(*) > 1
 ORDER BY victimas_por_parte DESC
 LIMIT 10;
 
--- A06 victims: base de la clave subrogada (case_id, party_number, victim_ordinal).
--- victim_ordinal = ROW_NUMBER() ordenado por id dentro de (case_id, party_number);
+-- A06 victims: base de la PK de victima (case_id, numero_parte, numero_victima).
+-- numero_victima = ROW_NUMBER() ordenado por id dentro de (case_id, party_number);
 -- es determinista si id no se repite dentro del grupo. Las filas identicas salvo id
 -- son personas distintas con el mismo perfil (p. ej. dos pasajeros), no duplicados.
 SELECT COUNT(*) AS total_victims,
@@ -179,4 +179,4 @@ FROM sw.dim_categoria_pcf GROUP BY descripcion HAVING COUNT(*) > 1;
 -- ============================================================================
 -- BLOQUE D: CIERRE METODOLOGICO
 -- ============================================================================
-SELECT 'DECISION_NORMALIZACION: case_id (INTEGER, 07-N01) es PK de colision; (case_id, party_number) es PK de parte; parties.id y victims.id se descartan (no son claves: 3 y 1 duplicados); victima recibe PK compuesta (case_id, party_number, victim_ordinal) con ordinal determinista por id (A06); las filas de victimas identicas salvo id se conservan; FK victima -> parte -> colision verificadas por NOT EXISTS sin huerfanos; case_ids (case_id, db_year) es redundante con collisions y no se migra; las dim_* del prototipo 2016-2021 se descartan y se reconstruyen en Fase 2.' AS decision_normalizacion;
+SELECT 'DECISION_NORMALIZACION: case_id (INTEGER, 07-N01) es PK de colision; (case_id, party_number) es PK de parte; parties.id y victims.id se descartan (no son claves: 3 y 1 duplicados); victima recibe PK compuesta (case_id, numero_parte, numero_victima) con ordinal determinista por id (A06); las filas de victimas identicas salvo id se conservan; FK victima -> parte -> colision verificadas por NOT EXISTS sin huerfanos; case_ids (case_id, db_year) es redundante con collisions y no se migra; las dim_* del prototipo 2016-2021 se descartan y se reconstruyen en Fase 2.' AS decision_normalizacion;

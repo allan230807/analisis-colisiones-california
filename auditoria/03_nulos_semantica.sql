@@ -87,7 +87,7 @@ WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01';
 SELECT 'collisions.weather_1' AS columna, COUNT(*) AS total,
        SUM(CASE WHEN weather_1 IS NULL THEN 1 ELSE 0 END) AS n_nulos,
        ROUND(100.0 * SUM(CASE WHEN weather_1 IS NULL THEN 1 ELSE 0 END) / COUNT(*), 2) AS pct_nulos,
-       'REGLA DIM: id=0 Sin clasificar para NULL/basura; conservar codigo_original' AS regla_normalizacion
+       'REGLA DIM: id=0 Sin clasificar para NULL/basura; el codigo de la fuente se conserva en el catalogo' AS regla_normalizacion
 FROM sw.collisions WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
 UNION ALL
 SELECT 'collisions.lighting', COUNT(*),

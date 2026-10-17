@@ -134,4 +134,4 @@ SELECT ROUND((SELECT COUNT(*) FROM sw.collisions
 FROM diario;
 
 -- T08 Cierre metodologico: resumen del volumen temporal 2010-2019.
-SELECT 'DECISION_NORMALIZACION: cobertura decenal 2010-2019 completa y continua (3.652 dias sin huecos); collision_date se almacena como DATE y collision_time como TIME (NULL = hora desconocida); dim_fecha se genera por calendario (3.652 dias), no a partir de los datos; los hechos se particionan por anio (10 particiones Parquet); el total anual de victimas no es comparable antes/despues de 2017 para ilesos (07-N15).' AS decision_normalizacion;
+SELECT 'DECISION_NORMALIZACION: cobertura decenal 2010-2019 completa y continua (3.652 dias sin huecos); collision_date se almacena como DATE y collision_time como TIME (NULL = hora desconocida); el catalogo calendario se genera por calendario (3.652 dias), no a partir de los datos; los hechos se particionan por anio (10 particiones Parquet); el total anual de victimas no es comparable antes/despues de 2017 para ilesos (07-N15).' AS decision_normalizacion;
