@@ -82,10 +82,23 @@ En California, el sistema **SWITRS** recopila reportes policiales estandarizados
 | 🚙 | **Año del vehículo** | `vehicle_year` se preserva en el rango verificado 1900–2020 para el Objetivo 4. Un conteo de siniestros no equivale a una tasa de riesgo sin denominadores de exposición (parque circulante o millas recorridas). |
 | 🧑‍✈️ | **Unidad de análisis del Objetivo 2** | Hay 1,78 conductores por colisión en promedio. Se usa el conductor culpable (`at_fault = 1`), presente en el 93,05% de las colisiones y nunca más de uno, para no contar una colisión varias veces. |
 | 🩺 | **Lesión de víctimas desde 2017** | SWITRS recodificó `victim_degree_of_injury` en 2017–2018 y desde 2017 registra ~65% menos víctimas ilesas. La lesión se homologa a KABCO (K, A, B, C, O); la severidad se compara con K–C. |
+| 🛰️ | **Cobertura de coordenadas por año** | Crece de 34,3 % (2010) a 64,1 % (2019). Las comparaciones entre años usan el condado; las coordenadas, solo dentro de un mismo año. |
+| ❓ | **Edad faltante del culpable** | Falta en el 2,2 % de los conductores culpables sin fuga, pero en ~70 % de los que huyeron. No es un faltante al azar: el Objetivo 2 se analiza con y sin colisiones con fuga. |
 | ♻️ | **Redundancia de la fuente** | 21 columnas son recalculables desde el detalle (conteos de víctimas, `party_count`, `collision_severity`, banderas de tipo de colisión). No se almacenan: se calculan en vistas. |
 
 > [!WARNING]
 > El total anual de víctimas cae de 529.156 (2016) a 366.353 (2017). No es una baja real de la siniestralidad, sino la menor captura de víctimas ilesas. Ver la sección B.9 del [informe de auditoría](auditoria/RESULTADOS_AUDITORIA.md).
+
+## 📐 Plan de análisis (Fase 3)
+
+Decisiones metodológicas tomadas antes de analizar, a partir de la auditoría:
+
+| Objetivo | Unidad y variables (vistas) | Método | Cuidados |
+|:---:|---|---|---|
+| **1** | Colisión: `fecha`, `hora`, `condado_id` (`vw_hecho_colision`) | Frecuencias, proporciones y series; tasas por día de calendario | Coordenadas solo dentro de un mismo año (cobertura creciente). |
+| **2** | Colisión con conductor culpable: `edad_conductor_culpable` (bandas) vs. `severidad_id` | Tablas de contingencia con **tamaño de efecto** (V de Cramér, razones de probabilidades) y **regresión logística ordinal** | Con millones de filas cualquier contraste es significativo: se informa el efecto, no solo el valor p. Análisis con y sin fugas (edad faltante no aleatoria). |
+| **3** | Colisión: `clima_id`, `iluminacion_id`, `superficie_id` | Distribuciones y comparación de severidad por condición | Las condiciones adversas son poco frecuentes: comparar proporciones, no conteos. |
+| **4** | Víctima: `edad_vehiculo` (año de la colisión − año-modelo) vs. lesión KABCO (`vw_hecho_victima`) | Proporción de lesiones graves o mortales por edad del vehículo; **modelo multivariado** controlando tipo de vehículo, edad del conductor y tipo de colisión | Un conteo no es un riesgo (no hay datos de exposición); severidad con K–C por la ruptura de ilesos en 2017. |
 
 ## 🧭 Flujo del proyecto
 
@@ -164,7 +177,9 @@ erDiagram
 ```text
 analisis-colisiones-california/
 ├── README.md                           ← Documentación general del proyecto y estado
-├── requirements.txt                    ← Dependencias Python (Fase 2)
+├── requirements.txt                    ← Dependencias Python (duckdb fijado)
+├── docs/
+│   └── Evaluacion_SQL_Formulario_G8.docx ← Cuestionario de SQL avanzado de la cátedra (Formulario G8)
 ├── assets/
 │   └── banner.svg                      ← Banner del README
 ├── auditoria/                          ← FASE 1: AUDITORÍA INTEGRAL DE DATOS ✅
@@ -199,7 +214,7 @@ Directorios previstos para las fases siguientes (aún no existen): `notebooks/` 
 |---|---|
 | **DuckDB CLI ≥ 1.1** | Ejecuta los scripts de auditoría sobre el SQLite en modo solo lectura. |
 | **`data/raw/switrs.sqlite`** | Fuente original SWITRS, descargada y ubicada en esa ruta. |
-| **Python 3.10+** | Pipeline de normalización (`base_de_datos/`): DuckDB, PyArrow y pandas según `requirements.txt`. |
+| **Python 3.10+** | Pipeline de normalización (`base_de_datos/`). `requirements.txt` fija `duckdb==1.5.6`: con la misma versión el Parquet exportado es idéntico byte a byte. |
 
 ```bash
 python3 -m venv venv && venv/bin/pip install -r requirements.txt

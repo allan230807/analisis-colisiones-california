@@ -207,9 +207,17 @@ La severidad de la colisión es el nivel KABCO máximo de sus víctimas (0 si no
 
 La capa de consumo no duplica datos: tres vistas unen el núcleo con sus catálogos y recalculan las medidas sobre el grano correcto, de modo que ninguna medida se infla por *fan-out*:
 
-- **`vw_hecho_colision`**: Objetivos 1 y 3, y la severidad para el Objetivo 2 (incluye la edad del culpable, a lo sumo uno por colisión).
-- **`vw_hecho_parte`**: Objetivo 2 a grano parte (banda de edad) y año del vehículo.
-- **`vw_hecho_victima`**: Objetivo 4 (lesión KABCO de cada ocupante y año-modelo de su vehículo).
+- **`vw_hecho_colision`**: Objetivos 1 y 3, y el Objetivo 2 con `edad_conductor_culpable`, que solo toma al culpable cuando es conductor (a lo sumo uno por colisión). `edad_culpable` incluye además a los 48.419 peatones y 75.325 ciclistas culpables y no debe usarse para ese objetivo.
+- **`vw_hecho_parte`**: Objetivo 2 a grano parte (banda de edad) y `edad_vehiculo`.
+- **`vw_hecho_victima`**: Objetivo 4: lesión KABCO de cada ocupante y `edad_vehiculo` de su vehículo (año de la colisión − año-modelo, acotada a 0).
+
+### 4.9. Sesgos que el modelo hace visibles
+
+El modelo no corrige sesgos de la fuente, pero los deja medibles (auditoría B.11):
+
+- la existencia de una fila en `colision_geo` permite medir que la cobertura de coordenadas crece de 34,3 % a 64,1 % en la década;
+- `fuga_id` en `colision` y `edad_conductor_culpable` en la vista permiten comparar el Objetivo 2 con y sin fugas, donde la edad falta en ~70 % de los casos;
+- `edad_en_cuarentena` distingue una edad inválida de una ausente.
 
 ---
 

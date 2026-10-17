@@ -265,5 +265,38 @@ FROM (
 GROUP BY n_culpables
 ORDER BY n_culpables;
 
--- N18 Cierre: diseno normalizado que se desprende de este script.
+-- ============================================================================
+-- BLOQUE N7: SESGOS QUE CONDICIONAN EL ANALISIS (FASE 3)
+-- ============================================================================
+
+-- N19 Cobertura de coordenadas por anio: crece con el tiempo. Una serie o un mapa
+-- comparativo entre anios con colision_geo mostraria un aumento administrativo.
+SELECT substr(collision_date, 1, 4) AS anio,
+       COUNT(*) AS colisiones,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE latitude BETWEEN 32 AND 43
+                                       AND longitude BETWEEN -125 AND -114) / COUNT(*), 1) AS pct_con_coordenadas
+FROM c10
+GROUP BY anio
+ORDER BY anio;
+
+-- N20 Edad faltante del culpable segun tipo de parte y fuga: el faltante no es
+-- aleatorio (el conductor que huye no fue identificado).
+SELECT p.party_type, c.hit_and_run,
+       COUNT(*) AS culpables,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE p.party_age IS NULL OR p.party_age > 110) / COUNT(*), 1) AS pct_sin_edad_valida
+FROM p10 AS p
+JOIN c10 AS c USING (case_id)
+WHERE p.at_fault = 1
+GROUP BY ALL
+ORDER BY culpables DESC;
+
+-- N21 Anio-modelo posterior al anio de la colision (modelo del anio siguiente).
+-- La edad del vehiculo (anio colision - anio-modelo) da -1 y se acota a 0.
+SELECT COUNT(*) FILTER (WHERE p.vehicle_year > CAST(substr(c.collision_date, 1, 4) AS INTEGER)) AS modelo_posterior,
+       COUNT(*) FILTER (WHERE p.vehicle_year > CAST(substr(c.collision_date, 1, 4) AS INTEGER) + 1) AS posterior_mas_de_un_anio
+FROM p10 AS p
+JOIN c10 AS c USING (case_id)
+WHERE p.vehicle_year BETWEEN 1900 AND 2020;
+
+-- N22 Cierre: diseno normalizado que se desprende de este script.
 SELECT 'DECISION_NORMALIZACION: case_id a INTEGER, fechas a DATE/TIME, enteros pequenos a UTINYINT/USMALLINT; catalogo ubicacion(county_city_location -> condado, poblacion) por dependencia transitiva; NO almacenar columnas derivables (killed/injured/severe/visible/pain/peaton/ciclista counts, party_count, party_number_killed/injured, collision_severity, *_vehicle_type_at_fault, banderas peaton/ciclista): se recalculan en vistas; bloque Caltrans a subtipo 1:0..1; descartar columnas constantes o >95% nulas sin uso en objetivos; lesion con catalogo homologado KABCO; ilesos (O) no comparables antes/despues de 2017.' AS decision_normalizacion;

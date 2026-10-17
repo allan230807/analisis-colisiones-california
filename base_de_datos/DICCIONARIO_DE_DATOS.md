@@ -219,9 +219,11 @@ No se almacenan ni se exportan: son consultas sobre el núcleo (ver `01_creacion
 
 | Vista | Grano | Agrega al núcleo |
 |---|---|---|
-| `vw_hecho_colision` | colisión | `condado_id`, `poblacion_id`, `severidad_id` derivada, `victimas`, `muertos`, `heridos_graves`, `heridos_visibles`, `heridos_leves`, `heridos_total`, `partes`, banderas `peaton/ciclista/motociclista/camion_implicado`, datos del culpable (`tipo_parte_culpable_id`, `tipo_vehiculo_culpable_id`, `edad_culpable`, `anio_vehiculo_culpable`), `tiene_coordenadas`, `tiene_datos_caltrans`. |
-| `vw_hecho_parte` | parte | `fecha`, `condado_id`, `banda_edad_id`, lesión máxima, víctimas, muertos y heridos de esa parte. |
-| `vw_hecho_victima` | víctima | `kabco`, `nivel_lesion`, `banda_edad_id`, tipo y año del vehículo de su parte, `parte_culpable`, `fecha`, `condado_id`. |
+| `vw_hecho_colision` | colisión | `condado_id`, `poblacion_id`, `severidad_id` derivada, `victimas`, `muertos`, `heridos_graves`, `heridos_visibles`, `heridos_leves`, `heridos_total`, `partes`, banderas `peaton/ciclista/motociclista/camion_implicado`, datos del culpable (`tipo_parte_culpable_id`, `tipo_vehiculo_culpable_id`, `edad_culpable` de cualquier tipo de parte, **`edad_conductor_culpable`** solo si el culpable es conductor —variable del Objetivo 2—, `anio_vehiculo_culpable`, `edad_vehiculo_culpable`), `tiene_coordenadas`, `tiene_datos_caltrans`. |
+| `vw_hecho_parte` | parte | `fecha`, `condado_id`, `banda_edad_id`, **`edad_vehiculo`**, lesión máxima, víctimas, muertos y heridos de esa parte. |
+| `vw_hecho_victima` | víctima | `kabco`, `nivel_lesion`, `banda_edad_id`, tipo, año-modelo y **`edad_vehiculo`** del vehículo de su parte, `parte_culpable`, `fecha`, `condado_id`. |
+
+`edad_vehiculo` = año de la colisión − año-modelo, acotada a 0: 34.314 partes tienen un modelo del año siguiente al siniestro (auditoría B.11). Es la variable del Objetivo 4; el año-modelo solo mezcla la antigüedad del vehículo con la tendencia del calendario.
 
 ## 9. Campos de la fuente que no se migran
 

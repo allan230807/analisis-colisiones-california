@@ -178,9 +178,14 @@ SWITRS cambió la codificación de `victim_degree_of_injury` en 2017–2018 (`se
 - **`case_id`:** 100% numérico, de 7 u 8 dígitos, sin ceros a la izquierda, máximo 91.463.275 → se almacena como `INTEGER` (4 bytes) en lugar de `TEXT`, en las tres tablas.
 - **Fechas:** `collision_date` y `process_date` son 100% convertibles a `DATE`; `collision_time` a `TIME` (sin segundos en ningún registro).
 - **Enteros pequeños:** `party_number` (1–38) y edades válidas (0–110) caben en `UTINYINT`; `vehicle_year` en `USMALLINT`; los ids de catálogo en `UTINYINT` (≤ 255 valores) salvo `ubicacion` (`USMALLINT`).
-- **Clave de víctimas:** `victims` no tiene número de víctima y su `id` no es único. La PK será `(case_id, party_number, victim_ordinal)` con el ordinal asignado por `id` dentro de cada parte; el `id` no se repite dentro de ninguna parte (verificado). 25.710 filas son idénticas salvo el `id` y se conservan: son personas distintas con el mismo perfil (p. ej. dos pasajeros), no duplicados.
+- **Clave de víctimas:** `victims` no tiene número de víctima y su `id` no es único. La PK será `(case_id, numero_parte, numero_victima)` con el ordinal asignado por `id` dentro de cada parte; el `id` no se repite dentro de ninguna parte (verificado). 25.710 filas son idénticas salvo el `id` y se conservan: son personas distintas con el mismo perfil (p. ej. dos pasajeros), no duplicados.
 - **Unidad de análisis para el Objetivo 2 (edad del conductor):** hay 7.796.486 partes `driver` (1,78 por colisión; 9,70% sin edad). Cada colisión tiene **como máximo un culpable** (`at_fault = 1`): 4.064.710 colisiones con culpable y 303.583 (6,95%) sin culpable. Para relacionar la edad con la severidad de la colisión se usa el conductor culpable (relación `1:0..1`), lo que evita contar una colisión varias veces.
 - **Unidad de análisis para el Objetivo 4 (año-modelo):** `vehicle_year` es atributo de la parte, y cada víctima pertenece a una parte (`victims → parties` sin huérfanos). La relación año-modelo vs lesión se mide a grano víctima con lesión homologada K–C.
+
+### 11. Sesgos que Condicionan el Análisis (07_dependencias_tipos.sql, N19–N21)
+- **Cobertura de coordenadas creciente:** la proporción de colisiones georreferenciadas sube de **34,3 % (2010)** a **64,1 % (2019)**. El 49,44 % decenal oculta esa tendencia. Cualquier comparación espacial entre años hecha con `colision_geo` mostraría un aumento que es administrativo, no real. Para series y comparaciones entre años se usa el condado (100 % de cobertura); las coordenadas, solo dentro de un mismo año.
+- **Edad del culpable no faltante al azar:** entre los conductores culpables, la edad falta en el **2,2 %** de las colisiones sin fuga, pero en el **71,6 %** de las fugas por delito menor y el **68,4 %** de las fugas por delito grave (unos 775.000 culpables). Quien huye no fue identificado. Excluir esas filas en el Objetivo 2 sesga la muestra hacia las colisiones sin fuga, por lo que el análisis debe declararlo y comparar resultados con y sin fugas.
+- **Año-modelo posterior al año de la colisión:** 34.314 partes tienen un año-modelo mayor que el año del siniestro (modelos que salen a la venta el año anterior); solo 69 lo superan en más de un año. La edad del vehículo (año de la colisión − año-modelo) se acota a 0 en esos casos.
 
 ---
 
@@ -201,7 +206,9 @@ SWITRS cambió la codificación de `victim_degree_of_injury` en 2017–2018 (`se
 | **CP-11** | Columnas derivables | **⚠️ ADVERTENCIA** | 19 columnas de `collisions` y 2 de `parties` son recalculables desde el detalle (0–6 discrepancias); no se almacenan. |
 | **CP-12** | Bloques dispersos y columnas vacías | **✅ CORRECTO** | Bloque Caltrans nulo en bloque (0 parciales) → subtipo 1:0..1; 4 columnas sin información no se migran. |
 | **CP-13** | Continuidad de la lesión de víctimas | **⚠️ ADVERTENCIA** | Recodificación 2017–2018 resuelta con KABCO; ilesos (O) caen ~65% desde 2017 y no son comparables. |
-| **CP-14** | Claves y tipos físicos | **✅ CORRECTO** | `case_id` → `INTEGER`; fechas → `DATE`/`TIME`; víctima con PK `(case_id, party_number, victim_ordinal)` determinista. |
+| **CP-15** | Estabilidad de la cobertura geográfica | **⚠️ ADVERTENCIA** | 34,3 % (2010) → 64,1 % (2019): no comparar coordenadas entre años. |
+| **CP-16** | Faltantes de la edad del culpable | **⚠️ ADVERTENCIA** | 2,2 % sin fuga vs. ~70 % con fuga: faltante no aleatorio; análisis de sensibilidad obligatorio en el Objetivo 2. |
+| **CP-14** | Claves y tipos físicos | **✅ CORRECTO** | `case_id` → `INTEGER`; fechas → `DATE`/`TIME`; víctima con PK `(case_id, numero_parte, numero_victima)` determinista. |
 
 ---
 
@@ -217,10 +224,10 @@ El objetivo de la Fase 2 es una base **lo más normalizada posible y liviana**. 
 | `colision_geo` | `case_id` (1:0..1) | 2.159.739 | Latitud y longitud con par completo dentro de California. |
 | `colision_carretera` | `case_id` (1:0..1) | 904.581 | Bloque Caltrans. |
 | `parte` | `(case_id, party_number)` | 8.688.142 | Tipo de parte, culpabilidad, sexo, edad, sobriedad, vehículo y `vehicle_year` (Objetivo 4). |
-| `victima` | `(case_id, party_number, victim_ordinal)` | 4.280.801 | Rol, sexo, edad, lesión, asiento, equipo de seguridad y eyección. |
+| `victima` | `(case_id, numero_parte, numero_victima)` | 4.280.801 | Rol, sexo, edad, lesión, asiento, equipo de seguridad y eyección. |
 | `ubicacion` → `condado`, `poblacion` | `county_city_location` | 542 → 58, 8 | Elimina la dependencia transitiva de la colisión. |
-| Catálogos de códigos | `id` UTINYINT | — | `id = 0 Sin clasificar` para NULL y códigos basura; `codigo_original` + `descripcion_es`. `lesion` incluye el nivel KABCO. |
-| `dim_fecha` | `fecha` | 3.652 | Generada por calendario, no desde los datos. |
+| Catálogos de códigos (24) | `<catalogo>_id` UTINYINT | 4 a 24 | `id = 0 Sin clasificar` para NULL y códigos basura; `codigo` + `etiqueta` en español. `lesion` incluye el nivel KABCO. |
+| `calendario` | `fecha` | 3.652 | Generada por calendario, no desde los datos. |
 
 2. **Capa analítica en estrella (vistas sobre el núcleo, para Power BI):** `vw_hecho_colision` (severidad derivada, conteos K/A/B/C, número de partes, banderas peatón/ciclista/moto/camión, vehículo del culpable, `tiene_coordenadas`), `vw_hecho_parte` (bandas etarias excluyentes `0-17`, `18-25`, `26-35`, `36-50`, `51-64`, `65+`, `Desconocido`) y `vw_hecho_victima` (lesión KABCO). Las medidas se calculan con `COUNT` sobre el grano correcto, lo que elimina el riesgo de *fan-out*.
 
