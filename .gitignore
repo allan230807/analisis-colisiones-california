@@ -3,8 +3,12 @@ __pycache__/
 *.csv
 *.xlsx
 *.hyper
-data/
+data/raw/
 .env
 *.sqlite
 .DS_Store
 .vscode/
+
+# Base normalizada intermedia: se reconstruye con base_de_datos/01-03
+*.duckdb
+*.duckdb.wal
