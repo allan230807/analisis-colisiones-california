@@ -64,7 +64,7 @@ GROUP BY truck_collision;
 SELECT 'collisions.latitude' AS columna, COUNT(*) AS total,
        SUM(CASE WHEN latitude IS NULL THEN 1 ELSE 0 END) AS n_nulos,
        ROUND(100.0 * SUM(CASE WHEN latitude IS NULL THEN 1 ELSE 0 END) / COUNT(*), 2) AS pct_nulos,
-       'REGLA T-coords: tabla 1:0..1 solo con lat+lon no nulos + bandera tiene_coordenadas en el hecho' AS regla_normalizacion
+       'REGLA T-coords: tabla 1:0..1 colision_geo solo con lat+lon no nulos; tiene_coordenadas se deriva en la vista' AS regla_normalizacion
 FROM sw.collisions WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
 UNION ALL
 SELECT 'collisions.longitude', COUNT(*),
@@ -285,4 +285,4 @@ WHERE EXISTS (SELECT 1 FROM sw.collisions AS c WHERE c.case_id = v.case_id
               AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01');
 
 -- C09 Cierre: como se trata cada vacio en el perfil.
-SELECT 'DECISION_NORMALIZACION: alcohol_involved se almacena BOOLEAN con NULL semantico (TRUE = confirmado, NULL = no reportado; nunca FALSE); pedestrian/bicycle/motorcycle/truck_collision no se almacenan (derivables de parties, 07-N10); lat/lon solo en tabla 1:0..1 con par completo + bandera tiene_coordenadas en vista; todo codigo/texto a su catalogo con id=0 Sin clasificar; edades y vehicle_year con NULL para Desconocido + cuarentena de atipicos (04); collision_time NULL se mantiene como TIME NULL (hora desconocida).' AS decision_normalizacion;
+SELECT 'DECISION_NORMALIZACION: alcohol_involved se almacena como alcohol_implicado BOOLEAN con NULL semantico (TRUE = confirmado, NULL = no reportado; nunca FALSE); pedestrian/bicycle/motorcycle/truck_collision no se almacenan (derivables de parties, 07-N10); lat/lon solo en tabla 1:0..1 con par completo + bandera tiene_coordenadas en vista; todo codigo/texto a su catalogo con id=0 Sin clasificar; edades y vehicle_year con NULL para Desconocido + cuarentena de atipicos (04); collision_time NULL se mantiene como TIME NULL (hora desconocida).' AS decision_normalizacion;

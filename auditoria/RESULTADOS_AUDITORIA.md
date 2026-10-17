@@ -2,7 +2,7 @@
 
 **Proyecto:** Perfiles de riesgo en colisiones de tránsito — California (2010–2019)  
 **Institución:** Escuela de Estadística y Ciencias Actuariales (EECA-UCV) — Cátedra de Computación II  
-**Versión de informe:** 2.1 (Unificación decenal 2010–2019 y evidencia para la normalización)  
+**Versión de informe:** 2.2 (Unificación decenal 2010–2019, evidencia para la normalización y verificación de la Fase 2)  
 **Fecha de corte de auditoría:** 2026-10-17  
 
 ---
@@ -20,7 +20,7 @@ Evaluar de forma empírica y reproducible la calidad, completitud, estructura, s
 - **Fuente primaria:** Base de datos relacional SQLite oficial de SWITRS (`data/raw/switrs.sqlite`), con un volumen global de 9.424.334 colisiones (2001–2021).
 - **Motor analítico:** **DuckDB** mediante la extensión `sqlite` (`ATTACH 'data/raw/switrs.sqlite' AS sw (TYPE sqlite, READ_ONLY)`).
 - **Justificación técnica:** El procesamiento directo en SQLite sobre tablas de más de 18 millones de filas genera *timeouts* y bloqueos: la fuente no tiene índices sobre `case_id` y almacena casi todo como `TEXT`. DuckDB ejecuta escaneos columnares con paralelismo vectorial sin modificar la fuente cruda.
-- **Peso y margen de optimización:** La fuente completa (2001–2021) ocupa **9,9 GB**. El mismo período 2010–2019 copiado sin tipar ni normalizar a formato columnar DuckDB ocupa **565 MB**; el tipado y la eliminación de columnas derivables (sección B.7) reducen aún más ese volumen en la Fase 2.
+- **Peso y margen de optimización:** La fuente completa (2001–2021) ocupa **9,9 GB**. El mismo período 2010–2019 copiado sin tipar ni normalizar a formato columnar DuckDB ocupa **565 MB**; con el tipado y la eliminación de columnas derivables (sección B.7), la base normalizada de la Fase 2 ocupa **315 MB** y su exportación Parquet **139 MB**.
 
 ### 4. Tablas Analizadas
 | Tabla Fuente | Filas Globales (2001–2021) | Filas Período (2010–2019) | Grano de la Información |
@@ -87,7 +87,7 @@ Evaluar de forma empírica y reproducible la calidad, completitud, estructura, s
   - Par completo fuera de California: **0** casos.
   - Par incompleto (longitud sin latitud, lon = -37,06): **1** caso. No es un punto válido y se trata como sin coordenadas.
   - Par nulo: **2.208.553** (50,56%). Junto con el par incompleto, **2.208.554** colisiones quedan sin georreferencia.
-  - *Regla metodológica:* Prohibido imputar coordenadas (centroides o ceros). Se diseña una tabla de extensión de grano `1:0..1` (`hecho_colision_geo`) y una bandera booleana `tiene_coordenadas` en el hecho principal.
+  - *Regla metodológica:* Prohibido imputar coordenadas (centroides o ceros). Se diseña una tabla de extensión de grano `1:0..1` (`colision_geo`) y una bandera booleana `tiene_coordenadas` en el hecho principal.
 - **Hora del siniestro (`collision_time`):** 39.693 nulos (0,91%). Se mantiene como hora desconocida; prohibido imputar `00:00:00` para no distorsionar las colisiones de medianoche.
 
 ### 4. Consistencia Matemática y Control Anti Fan-Out (04_fanout_rangos.sql)
@@ -197,7 +197,7 @@ SWITRS cambió la codificación de `victim_degree_of_injury` en 2017–2018 (`se
 | **CP-02** | Existencia de tablas originales | **✅ CORRECTO** | `collisions`, `parties`, `victims` y `case_ids` verificadas y funcionales. |
 | **CP-03** | Unicidad de clave de colisión | **✅ CORRECTO** | `case_id` 100% único (0 duplicados, 0 nulos). |
 | **CP-04** | Integridad referencial de partes y víctimas | **✅ CORRECTO** | 0 partes huérfanas, 0 víctimas huérfanas, 0 víctimas sin participante padre. |
-| **CP-05** | Georreferenciación y nulos de coordenadas | **⚠️ ADVERTENCIA** | 50,56% nulos. Requiere tabla satélite 1:0..1 `hecho_colision_geo`. |
+| **CP-05** | Georreferenciación y nulos de coordenadas | **⚠️ ADVERTENCIA** | 50,56% nulos. Requiere tabla satélite 1:0..1 `colision_geo`. |
 | **CP-06** | Semántica de alcohol involucrado | **✅ CORRECTO** | 440.917 con alcohol (10,09%); 3.927.376 no reportado/nulo (89,91%). |
 | **CP-07** | Consistencia de métricas de severidad | **✅ CORRECTO** | Muertos declarados (33.541) = muertos reales (33.541); Heridos (2.491.217) = heridos reales (2.491.217). |
 | **CP-08** | Control de rangos (edad y año vehículo) | **⚠️ ADVERTENCIA** | 38 `party_age` > 110; 171 `victim_age` fuera de 0–110 (48 son centinelas 998/999); 2 `vehicle_year` = 2021. Cuarentena sin eliminación. |
@@ -206,34 +206,34 @@ SWITRS cambió la codificación de `victim_degree_of_injury` en 2017–2018 (`se
 | **CP-11** | Columnas derivables | **⚠️ ADVERTENCIA** | 19 columnas de `collisions` y 2 de `parties` son recalculables desde el detalle (0–6 discrepancias); no se almacenan. |
 | **CP-12** | Bloques dispersos y columnas vacías | **✅ CORRECTO** | Bloque Caltrans nulo en bloque (0 parciales) → subtipo 1:0..1; 4 columnas sin información no se migran. |
 | **CP-13** | Continuidad de la lesión de víctimas | **⚠️ ADVERTENCIA** | Recodificación 2017–2018 resuelta con KABCO; ilesos (O) caen ~65% desde 2017 y no son comparables. |
+| **CP-14** | Claves y tipos físicos | **✅ CORRECTO** | `case_id` → `INTEGER`; fechas → `DATE`/`TIME`; víctima con PK `(case_id, numero_parte, numero_victima)` determinista. |
 | **CP-15** | Estabilidad de la cobertura geográfica | **⚠️ ADVERTENCIA** | 34,3 % (2010) → 64,1 % (2019): no comparar coordenadas entre años. |
 | **CP-16** | Faltantes de la edad del culpable | **⚠️ ADVERTENCIA** | 2,2 % sin fuga vs. ~70 % con fuga: faltante no aleatorio; análisis de sensibilidad obligatorio en el Objetivo 2. |
-| **CP-14** | Claves y tipos físicos | **✅ CORRECTO** | `case_id` → `INTEGER`; fechas → `DATE`/`TIME`; víctima con PK `(case_id, numero_parte, numero_victima)` determinista. |
 
 ---
 
 ## D. Decisiones Metodológicas para la Fase 2 (Normalización)
 
-El objetivo de la Fase 2 es una base **lo más normalizada posible y liviana**. Se separan dos capas:
+El objetivo de la Fase 2 es una base **lo más normalizada posible y liviana**. Estas decisiones están implementadas en [`base_de_datos/`](../base_de_datos) y documentadas campo por campo en su [diccionario de datos](../base_de_datos/DICCIONARIO_DE_DATOS.md). Se separan dos capas:
 
 1. **Núcleo normalizado en 3FN (almacenamiento físico, Parquet ZSTD particionado por año):**
 
 | Tabla | Grano / PK | Filas 2010–2019 | Contenido |
 |---|---|---|---|
-| `colision` | `case_id` (INTEGER) | 4.368.293 | Fecha (`DATE`), hora (`TIME`, NULL = desconocida), FK a `ubicacion` y a catálogos de entorno, vía, causa y tipo; banderas propias en `BOOLEAN` (`alcohol_involved` con NULL semántico: TRUE o NULL, nunca FALSE). |
+| `colision` | `case_id` (INTEGER) | 4.368.293 | Fecha (`DATE`), hora (`TIME`, NULL = desconocida), FK a `ubicacion` y a catálogos de entorno, vía, causa y tipo; banderas propias en `BOOLEAN` (`alcohol_implicado` con NULL semántico: TRUE o NULL, nunca FALSE). |
 | `colision_geo` | `case_id` (1:0..1) | 2.159.739 | Latitud y longitud con par completo dentro de California. |
 | `colision_carretera` | `case_id` (1:0..1) | 904.581 | Bloque Caltrans. |
-| `parte` | `(case_id, party_number)` | 8.688.142 | Tipo de parte, culpabilidad, sexo, edad, sobriedad, vehículo y `vehicle_year` (Objetivo 4). |
+| `parte` | `(case_id, numero_parte)` | 8.688.142 | Tipo de parte, culpabilidad, sexo, edad, sobriedad, vehículo y `anio_vehiculo` (Objetivo 4). |
 | `victima` | `(case_id, numero_parte, numero_victima)` | 4.280.801 | Rol, sexo, edad, lesión, asiento, equipo de seguridad y eyección. |
-| `ubicacion` → `condado`, `poblacion` | `county_city_location` | 542 → 58, 8 | Elimina la dependencia transitiva de la colisión. |
+| `ubicacion` → `condado`, `poblacion` | `ubicacion_id` (= `county_city_location`) | 542 → 58, 8 | Elimina la dependencia transitiva de la colisión. |
 | Catálogos de códigos (24) | `<catalogo>_id` UTINYINT | 4 a 24 | `id = 0 Sin clasificar` para NULL y códigos basura; `codigo` + `etiqueta` en español. `lesion` incluye el nivel KABCO. |
 | `calendario` | `fecha` | 3.652 | Generada por calendario, no desde los datos. |
 
-2. **Capa analítica en estrella (vistas sobre el núcleo, para Power BI):** `vw_hecho_colision` (severidad derivada, conteos K/A/B/C, número de partes, banderas peatón/ciclista/moto/camión, vehículo del culpable, `tiene_coordenadas`), `vw_hecho_parte` (bandas etarias excluyentes `0-17`, `18-25`, `26-35`, `36-50`, `51-64`, `65+`, `Desconocido`) y `vw_hecho_victima` (lesión KABCO). Las medidas se calculan con `COUNT` sobre el grano correcto, lo que elimina el riesgo de *fan-out*.
+2. **Capa analítica en estrella (vistas sobre el núcleo, para Power BI):** `vw_hecho_colision` (severidad derivada, conteos K/A/B/C, número de partes, banderas peatón/ciclista/moto/camión, datos del culpable con `edad_conductor_culpable`, `tiene_coordenadas`), `vw_hecho_parte` (bandas etarias excluyentes `0-17`, `18-25`, `26-35`, `36-50`, `51-64`, `65+`, `Desconocida`, y `edad_vehiculo`) y `vw_hecho_victima` (lesión KABCO y `edad_vehiculo`). Las medidas se calculan con `COUNT` sobre el grano correcto, lo que elimina el riesgo de *fan-out*.
 
 3. **Lo que no se almacena:** las 21 columnas derivables (sección B.7), las 4 columnas sin información (B.8), `parties.id`, `victims.id`, la tabla `case_ids` (redundante con `collisions`) y las tablas `dim_*` del prototipo. Las columnas administrativas y de texto libre que ningún objetivo usa (`officer_id`, `reporting_district`, `beat_*`, `chp_shift`, `chp_beat_*`, `city_division_lapd`, `chp_road_type`, `primary_road`, `secondary_road`, `distance`, `direction`, `primary_ramp`, `secondary_ramp`, `process_date`) quedan fuera del modelo y son recuperables desde la fuente por `case_id`.
 
-4. **Valores atípicos:** edades fuera de 0–110 (incluidos 998/999) y `vehicle_year` fuera de 1900–2020 se almacenan como NULL con bandera de cuarentena; la fila se conserva y el valor crudo permanece en la fuente.
+4. **Valores atípicos:** edades fuera de 0–110 (incluidos 998/999) y `anio_vehiculo` fuera de 1900–2020 se almacenan como NULL con bandera de cuarentena; la fila se conserva y el valor crudo permanece en la fuente.
 
 ---
 
@@ -246,3 +246,5 @@ Los riesgos identificados (50,56% de coordenadas nulas, atípicos centinela 998/
 La auditoría además demuestra que la fuente es fuertemente redundante: 21 columnas son recalculables desde el detalle, `county_city_location` determina condado y población, el bloque Caltrans es un subtipo y `case_id` admite un tipo entero. Estas evidencias fundamentan el núcleo en 3FN de la sección D.
 
 **Dictamen:** La fuente de datos para el período 2010–2019 ha sido auditada y documentada. Los hallazgos identificados (cobertura de coordenadas, códigos centinela 998/999, `alcohol_involved` sin valor 0, columnas derivables y ruptura de víctimas ilesas en 2017) cuentan con tratamientos metodológicos claros. Se encuentra lista para proceder con la Fase 2: construcción del núcleo normalizado en 3FN y de su capa de vistas en estrella, bajo las condiciones y limitaciones descritas.
+
+**Verificación posterior (Fase 2):** el modelo de la sección D se implementó en [`base_de_datos/`](../base_de_datos). La carga reproduce las cifras de esta auditoría: mismas filas por tabla, 33.541 muertos, 2.491.217 heridos, severidad y banderas recalculadas sin diferencias y 0 huérfanos en 37 relaciones; los 20 controles están en [`MODELADO_DE_DATOS.md`](../base_de_datos/MODELADO_DE_DATOS.md#6-controles-de-integridad-03).
