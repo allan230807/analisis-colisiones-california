@@ -40,9 +40,9 @@ DuckDB implementa cada PRIMARY KEY y cada FOREIGN KEY con un indice ART. Sobre
 tablas de millones de filas esos indices pesan mucho mas que los datos; se midio
 con la base cargada:
 
-    PK y FK declaradas en el nucleo ......... 3,2 GB
+    PK y FK declaradas en el nucleo ......... ~3,4 GB
     Solo PK declaradas en el nucleo ......... ~0,7 GB
-    Sin indices en el nucleo (base final) ... 301 MB   (fuente: 9,9 GB)
+    Sin indices en el nucleo (base final) ... 315 MB   (fuente: 9,9 GB)
 
 Y no aceleran nada en un motor columnar: las consultas analiticas recorren
 columnas enteras con uniones por dispersion, no buscan filas sueltas.

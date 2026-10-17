@@ -20,7 +20,7 @@ Evaluar de forma empírica y reproducible la calidad, completitud, estructura, s
 - **Fuente primaria:** Base de datos relacional SQLite oficial de SWITRS (`data/raw/switrs.sqlite`), con un volumen global de 9.424.334 colisiones (2001–2021).
 - **Motor analítico:** **DuckDB** mediante la extensión `sqlite` (`ATTACH 'data/raw/switrs.sqlite' AS sw (TYPE sqlite, READ_ONLY)`).
 - **Justificación técnica:** El procesamiento directo en SQLite sobre tablas de más de 18 millones de filas genera *timeouts* y bloqueos: la fuente no tiene índices sobre `case_id` y almacena casi todo como `TEXT`. DuckDB ejecuta escaneos columnares con paralelismo vectorial sin modificar la fuente cruda.
-- **Peso y margen de optimización:** La fuente completa (2001–2021) ocupa **9,9 GB**. El mismo período 2010–2019 copiado sin tipar ni normalizar a formato columnar DuckDB ocupa **539 MB**; el tipado y la eliminación de columnas derivables (sección B.7) reducen aún más ese volumen en la Fase 2.
+- **Peso y margen de optimización:** La fuente completa (2001–2021) ocupa **9,9 GB**. El mismo período 2010–2019 copiado sin tipar ni normalizar a formato columnar DuckDB ocupa **565 MB**; el tipado y la eliminación de columnas derivables (sección B.7) reducen aún más ese volumen en la Fase 2.
 
 ### 4. Tablas Analizadas
 | Tabla Fuente | Filas Globales (2001–2021) | Filas Período (2010–2019) | Grano de la Información |

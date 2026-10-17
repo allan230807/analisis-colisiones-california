@@ -7,13 +7,13 @@
 [![Período](https://img.shields.io/badge/per%C3%ADodo-2010%E2%80%932019-0B1F3A?style=for-the-badge&logo=googlecalendar&logoColor=F5A623)](#-alcance-y-limitaciones-metodológicas)
 [![Fuente](https://img.shields.io/badge/fuente-SWITRS%20%C2%B7%20CHP-13315C?style=for-the-badge&logo=databricks&logoColor=F5A623)](#-referencias)
 [![Fase 1](https://img.shields.io/badge/fase%201-auditor%C3%ADa%20completa-2E8B57?style=for-the-badge&logo=checkmarx&logoColor=white)](auditoria/RESULTADOS_AUDITORIA.md)
-[![Fase 2](https://img.shields.io/badge/fase%202-normalizaci%C3%B3n%203FN-F5A623?style=for-the-badge&logo=buffer&logoColor=0B1F3A)](#%EF%B8%8F-hoja-de-ruta)
+[![Fase 2](https://img.shields.io/badge/fase%202-normalizaci%C3%B3n%203FN%20completa-2E8B57?style=for-the-badge&logo=buffer&logoColor=white)](base_de_datos/MODELADO_DE_DATOS.md)
 
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.1%2B-FFF000?style=flat-square&logo=duckdb&logoColor=black)](https://duckdb.org)
 [![SQLite](https://img.shields.io/badge/SQLite-fuente%209%2C9%20GB-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://www.sqlite.org)
 [![SQL](https://img.shields.io/badge/SQL-7%20scripts-1D4E89?style=flat-square&logo=postgresql&logoColor=white)](auditoria)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](requirements.txt)
-[![Parquet](https://img.shields.io/badge/Parquet-ZSTD-50ABF1?style=flat-square&logo=apacheparquet&logoColor=white)](#%EF%B8%8F-hoja-de-ruta)
+[![Parquet](https://img.shields.io/badge/Parquet-139%20MB-50ABF1?style=flat-square&logo=apacheparquet&logoColor=white)](data/processed)
 [![Power BI](https://img.shields.io/badge/Power%20BI-tablero-F2C811?style=flat-square&logo=powerbi&logoColor=black)](#%EF%B8%8F-hoja-de-ruta)
 [![Último commit](https://img.shields.io/github/last-commit/allan230807/analisis-colisiones-california?style=flat-square&color=E4572E&label=%C3%BAltimo%20commit)](https://github.com/allan230807/analisis-colisiones-california/commits/main)
 
@@ -24,8 +24,10 @@
 [Alcance](#-alcance-y-limitaciones-metodológicas) ·
 [Modelo de datos](#-modelo-de-datos-objetivo) ·
 [Ejecución](#-ejecución-de-la-auditoría) ·
+[Base de datos](#%EF%B8%8F-base-de-datos-normalizada) ·
 [Hoja de ruta](#%EF%B8%8F-hoja-de-ruta) ·
-[Informe de auditoría](auditoria/RESULTADOS_AUDITORIA.md)
+[Informe de auditoría](auditoria/RESULTADOS_AUDITORIA.md) ·
+[Diccionario de datos](base_de_datos/DICCIONARIO_DE_DATOS.md)
 
 </div>
 
@@ -35,14 +37,14 @@ Investigación descriptiva e inferencial sobre **colisiones de tránsito en Cali
 
 <div align="center">
 
-| 🚗 Colisiones | 👥 Partes involucradas | 🩹 Víctimas | 📅 Días con datos | 🗺️ Condados | 💾 Fuente cruda |
+| 🚗 Colisiones | 👥 Partes involucradas | 🩹 Víctimas | 📅 Días con datos | 🗺️ Condados | 💾 Fuente → Parquet |
 |:---:|:---:|:---:|:---:|:---:|:---:|
-| **4.368.293** | **8.688.142** | **4.280.801** | **3.652 / 3.652** | **58** | **9,9 GB** |
+| **4.368.293** | **8.688.142** | **4.280.801** | **3.652 / 3.652** | **58** | **9,9 GB → 139 MB** |
 
 </div>
 
 > [!NOTE]
-> **Estado del proyecto:** la Fase 1 (auditoría integral y calidad de datos) está completada y verificada. La Fase 2 (normalización 3FN) es la siguiente.
+> **Estado del proyecto:** las Fases 1 (auditoría) y 2 (normalización 3FN) están completadas y verificadas. La base normalizada está en [`data/processed/`](data/processed) como Parquet. La Fase 3 (inferencia) es la siguiente.
 
 ---
 
@@ -90,14 +92,14 @@ En California, el sistema **SWITRS** recopila reportes policiales estandarizados
 ```mermaid
 flowchart LR
     A[("switrs.sqlite<br/>9,9 GB · 2001–2021")] -->|DuckDB<br/>READ_ONLY| B["Fase 1<br/>Auditoría<br/>7 scripts SQL"]
-    B -->|evidencia| C["Fase 2<br/>Núcleo 3FN<br/>Parquet ZSTD"]
+    B -->|evidencia| C["Fase 2<br/>Núcleo 3FN<br/>139 MB Parquet"]
     C --> D["Vistas en estrella"]
     D --> E["Fase 3<br/>Inferencia"]
     D --> F["Fase 4<br/>Power BI"]
 
     style A fill:#0B1F3A,stroke:#F5A623,color:#fff
     style B fill:#2E8B57,stroke:#1d5c3a,color:#fff
-    style C fill:#F5A623,stroke:#b87a12,color:#0B1F3A
+    style C fill:#2E8B57,stroke:#1d5c3a,color:#fff
     style D fill:#13315C,stroke:#F5A623,color:#fff
     style E fill:#1D4E89,stroke:#0B1F3A,color:#fff
     style F fill:#1D4E89,stroke:#0B1F3A,color:#fff
@@ -105,7 +107,7 @@ flowchart LR
 
 ## 🧱 Modelo de datos objetivo
 
-Diseño que se desprende de la auditoría (sección D del [informe](auditoria/RESULTADOS_AUDITORIA.md)): un **núcleo en 3FN** como almacenamiento y una **capa de vistas en estrella** para el consumo en Power BI. Los catálogos de códigos (clima, iluminación, lesión KABCO, tipo de vehículo, etc.) se omiten del diagrama.
+Diseño que se desprende de la auditoría (sección D del [informe](auditoria/RESULTADOS_AUDITORIA.md)) e implementado en [`base_de_datos/`](base_de_datos): un **núcleo en 3FN** como almacenamiento y una **capa de vistas en estrella** para el consumo en Power BI. Los 30 catálogos (clima, iluminación, lesión KABCO, tipo de vehículo, etc.) se omiten del diagrama; el detalle está en el [modelado de datos](base_de_datos/MODELADO_DE_DATOS.md).
 
 ```mermaid
 erDiagram
@@ -130,24 +132,24 @@ erDiagram
     }
     COLISION_CARRETERA {
         INTEGER case_id PK
-        INTEGER state_route
+        USMALLINT ruta_estatal
         DOUBLE postmile
     }
     PARTE {
         INTEGER case_id PK
-        UTINYINT party_number PK
-        BOOLEAN at_fault
+        UTINYINT numero_parte PK
+        BOOLEAN culpable
         UTINYINT edad
-        USMALLINT vehicle_year
+        USMALLINT anio_vehiculo
     }
     VICTIMA {
         INTEGER case_id PK
-        UTINYINT party_number PK
-        UTINYINT victim_ordinal PK
+        UTINYINT numero_parte PK
+        UTINYINT numero_victima PK
         UTINYINT lesion_id FK
     }
     UBICACION {
-        USMALLINT county_city_location PK
+        USMALLINT ubicacion_id PK
         UTINYINT condado_id FK
         UTINYINT poblacion_id
     }
@@ -174,12 +176,22 @@ analisis-colisiones-california/
 │   ├── 06_decision_estrella.sql        ← Modelo objetivo: núcleo 3FN + vistas en estrella
 │   ├── 07_dependencias_tipos.sql       ← Dependencias funcionales, derivables, tipos y KABCO
 │   └── RESULTADOS_AUDITORIA.md         ← Informe técnico con evidencia empírica (2010–2019)
-└── data/                               ← No versionado (.gitignore)
-    └── raw/
-        └── switrs.sqlite               ← Base original SWITRS (~9,9 GB, 2001–2021)
+├── base_de_datos/                      ← FASE 2: NORMALIZACIÓN 3FN ✅
+│   ├── comun.py                        ← Rutas, período, rangos y definición de catálogos
+│   ├── 01_creacion_esquema.py          ← Esquema: 30 catálogos, núcleo 3FN y 3 vistas
+│   ├── 02_poblacion_catalogos.py       ← Catálogos en español, KABCO, calendario, ubicación
+│   ├── 03_procesamiento_carga.py       ← Carga del núcleo + 20 controles de integridad
+│   ├── 04_exportacion_parquet.py       ← Exportación a Parquet particionado por año
+│   ├── DICCIONARIO_DE_DATOS.md         ← Campo por campo: tipo, llave, procedencia, nulos
+│   └── MODELADO_DE_DATOS.md            ← Decisiones de diseño y su evidencia
+└── data/
+    ├── raw/switrs.sqlite               ← Fuente SWITRS (~9,9 GB, no versionada)
+    └── processed/                      ← Base normalizada en Parquet (139 MB, versionada)
+        ├── catalogos/                  ← 30 catálogos
+        └── colision/ · colision_geo/ · colision_carretera/ · parte/ · victima/   ← 1 archivo por año
 ```
 
-Directorios previstos para las fases siguientes (aún no existen): `src/` (pipeline de normalización), `data/processed/` (Parquet normalizado), `notebooks/` (inferencia) y `visualizaciones/` (Power BI).
+Directorios previstos para las fases siguientes (aún no existen): `notebooks/` (inferencia) y `visualizaciones/` (Power BI).
 
 ## ⚙️ Requisitos
 
@@ -187,10 +199,10 @@ Directorios previstos para las fases siguientes (aún no existen): `src/` (pipel
 |---|---|
 | **DuckDB CLI ≥ 1.1** | Ejecuta los scripts de auditoría sobre el SQLite en modo solo lectura. |
 | **`data/raw/switrs.sqlite`** | Fuente original SWITRS, descargada y ubicada en esa ruta. |
-| **Python 3.10+** *(Fase 2)* | `requirements.txt` declara DuckDB, PyArrow y pandas para el pipeline de normalización. |
+| **Python 3.10+** | Pipeline de normalización (`base_de_datos/`): DuckDB, PyArrow y pandas según `requirements.txt`. |
 
 ```bash
-pip install -r requirements.txt
+python3 -m venv venv && venv/bin/pip install -r requirements.txt
 ```
 
 ## 🚀 Ejecución de la auditoría
@@ -220,12 +232,35 @@ duckdb -dark-mode < auditoria/06_decision_estrella.sql
 duckdb -dark-mode < auditoria/07_dependencias_tipos.sql
 ```
 
+## 🗄️ Base de datos normalizada
+
+El pipeline de [`base_de_datos/`](base_de_datos) construye la base en DuckDB y la exporta a Parquet. Cada paso se ejecuta desde esa carpeta:
+
+```bash
+cd base_de_datos
+../venv/bin/python 01_creacion_esquema.py      # esquema 3FN + vistas (recrea la base)
+../venv/bin/python 02_poblacion_catalogos.py   # 30 catálogos
+../venv/bin/python 03_procesamiento_carga.py   # carga del núcleo y 20 controles (~5 min)
+../venv/bin/python 04_exportacion_parquet.py   # data/processed/ (80 archivos, 139 MB)
+```
+
+| Tabla del núcleo | Grano | Filas |
+|---|---|---:|
+| `colision` | colisión | 4.368.293 |
+| `colision_geo` | colisión con coordenadas (1:0..1) | 2.159.739 |
+| `colision_carretera` | colisión en carretera estatal (1:0..1) | 904.581 |
+| `parte` | parte implicada | 8.688.142 |
+| `victima` | víctima | 4.280.801 |
+
+> [!TIP]
+> No hace falta la fuente de 9,9 GB para analizar: los Parquet de `data/processed/` se consultan directamente con DuckDB, pandas o Power BI. Ver el ejemplo en el [modelado de datos](base_de_datos/MODELADO_DE_DATOS.md#5-del-modelo-a-parquet).
+
 ## 🗺️ Hoja de ruta
 
 | Fase | Descripción | Estado |
 |:---:|---|:---:|
 | **1** | **Auditoría integral y calidad de datos.** Los 7 scripts SQL se ejecutan directamente sobre DuckDB (se eliminó `validar_auditoria.py`). Resultados en [`RESULTADOS_AUDITORIA.md`](auditoria/RESULTADOS_AUDITORIA.md). | ✅ Completada |
-| **2** | **Normalización y pipeline ETL.** Núcleo 3FN (`colision`, `colision_geo`, `colision_carretera`, `parte`, `victima`, `ubicacion` y catálogos con `id = 0 Sin clasificar`); tipado mínimo (`case_id` INTEGER, `DATE`/`TIME`, ids `UTINYINT`) sin columnas derivables; vistas en estrella; Parquet particionado por año con ZSTD. | ⏳ Pendiente |
+| **2** | **Normalización y pipeline ETL.** Núcleo 3FN (`colision`, `colision_geo`, `colision_carretera`, `parte`, `victima`) y 30 catálogos con `id = 0 Sin clasificar`; tipado mínimo sin columnas derivables; 3 vistas en estrella; 20 controles de integridad; Parquet particionado por año (9,9 GB → 139 MB). Ver [`base_de_datos/`](base_de_datos). | ✅ Completada |
 | **3** | **Análisis inferencial y modelado estadístico.** Contrastes de hipótesis sobre edad del conductor vs. severidad y modelos multivariados. | ⏳ Pendiente |
 | **4** | **Tablero ejecutivo en Power BI.** Navegación temporal y geográfica con filtros cruzados. | ⏳ Pendiente |
 
