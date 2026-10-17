@@ -1,5 +1,5 @@
 -- 01_catalogos_frecuencias.sql
--- EECA-UCV, Computacion II | Auditoria SWITRS California 2016-2021
+-- EECA-UCV, Computacion II | Auditoria SWITRS California 2010-2019
 -- Que responde: que valores existen en cada campo y cuantos choques aporta cada uno.
 -- Para el perfil de siniestros: de aqui salen las listas base (clima, causa,
 -- severidad, edad, sexo, etc.) y que va a "Sin clasificar".
@@ -9,33 +9,33 @@ LOAD sqlite;
 ATTACH 'data/raw/switrs.sqlite' AS sw (TYPE sqlite, READ_ONLY);
 
 -- S00-a Total collisions del periodo (denominador de los pct).
-SELECT COUNT(*) AS n_colisiones_16_21
+SELECT COUNT(*) AS n_colisiones_10_19
 FROM sw.collisions
-WHERE collision_date >= '2016-01-01' AND collision_date < '2022-01-01';
+WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01';
 
 -- S00-b Total partes del periodo (semi-join; cada parte pega con 1 colision).
-SELECT COUNT(*) AS n_partes_16_21
+SELECT COUNT(*) AS n_partes_10_19
 FROM sw.parties AS p
 WHERE EXISTS (
     SELECT 1 FROM sw.collisions AS c
     WHERE c.case_id = p.case_id
-      AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01'
+      AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
 );
 
 -- S00-c Total victimas del periodo (mismo patron semi-join).
-SELECT COUNT(*) AS n_victimas_16_21
+SELECT COUNT(*) AS n_victimas_10_19
 FROM sw.victims AS v
 WHERE EXISTS (
     SELECT 1 FROM sw.collisions AS c
     WHERE c.case_id = v.case_id
-      AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01'
+      AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
 );
 
 -- S01 weather_1 TOP 30 (pct sobre CTE: evita SUM(COUNT(*)) OVER () en linea).
 WITH g AS (
     SELECT weather_1 AS valor, COUNT(*) AS n
     FROM sw.collisions
-    WHERE collision_date >= '2016-01-01' AND collision_date < '2022-01-01'
+    WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
     GROUP BY weather_1
 )
 SELECT valor, n, ROUND(100.0 * n / SUM(n) OVER (), 2) AS pct
@@ -45,7 +45,7 @@ FROM g ORDER BY n DESC NULLS LAST LIMIT 30;
 WITH g AS (
     SELECT lighting AS valor, COUNT(*) AS n
     FROM sw.collisions
-    WHERE collision_date >= '2016-01-01' AND collision_date < '2022-01-01'
+    WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
     GROUP BY lighting
 )
 SELECT valor, n, ROUND(100.0 * n / SUM(n) OVER (), 2) AS pct
@@ -55,7 +55,7 @@ FROM g ORDER BY n DESC NULLS LAST LIMIT 30;
 WITH g AS (
     SELECT road_surface AS valor, COUNT(*) AS n
     FROM sw.collisions
-    WHERE collision_date >= '2016-01-01' AND collision_date < '2022-01-01'
+    WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
     GROUP BY road_surface
 )
 SELECT valor, n, ROUND(100.0 * n / SUM(n) OVER (), 2) AS pct
@@ -65,7 +65,7 @@ FROM g ORDER BY n DESC NULLS LAST LIMIT 30;
 WITH g AS (
     SELECT road_condition_1 AS valor, COUNT(*) AS n
     FROM sw.collisions
-    WHERE collision_date >= '2016-01-01' AND collision_date < '2022-01-01'
+    WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
     GROUP BY road_condition_1
 )
 SELECT valor, n, ROUND(100.0 * n / SUM(n) OVER (), 2) AS pct
@@ -75,7 +75,7 @@ FROM g ORDER BY n DESC NULLS LAST LIMIT 30;
 WITH g AS (
     SELECT control_device AS valor, COUNT(*) AS n
     FROM sw.collisions
-    WHERE collision_date >= '2016-01-01' AND collision_date < '2022-01-01'
+    WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
     GROUP BY control_device
 )
 SELECT valor, n, ROUND(100.0 * n / SUM(n) OVER (), 2) AS pct
@@ -85,7 +85,7 @@ FROM g ORDER BY n DESC NULLS LAST LIMIT 30;
 WITH g AS (
     SELECT primary_collision_factor AS valor, COUNT(*) AS n
     FROM sw.collisions
-    WHERE collision_date >= '2016-01-01' AND collision_date < '2022-01-01'
+    WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
     GROUP BY primary_collision_factor
 )
 SELECT valor, n, ROUND(100.0 * n / SUM(n) OVER (), 2) AS pct
@@ -95,7 +95,7 @@ FROM g ORDER BY n DESC NULLS LAST LIMIT 30;
 WITH g AS (
     SELECT pcf_violation_category AS valor, COUNT(*) AS n
     FROM sw.collisions
-    WHERE collision_date >= '2016-01-01' AND collision_date < '2022-01-01'
+    WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
     GROUP BY pcf_violation_category
 )
 SELECT valor, n, ROUND(100.0 * n / SUM(n) OVER (), 2) AS pct
@@ -105,7 +105,7 @@ FROM g ORDER BY n DESC NULLS LAST LIMIT 30;
 WITH g AS (
     SELECT type_of_collision AS valor, COUNT(*) AS n
     FROM sw.collisions
-    WHERE collision_date >= '2016-01-01' AND collision_date < '2022-01-01'
+    WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
     GROUP BY type_of_collision
 )
 SELECT valor, n, ROUND(100.0 * n / SUM(n) OVER (), 2) AS pct
@@ -115,7 +115,7 @@ FROM g ORDER BY n DESC NULLS LAST LIMIT 30;
 WITH g AS (
     SELECT motor_vehicle_involved_with AS valor, COUNT(*) AS n
     FROM sw.collisions
-    WHERE collision_date >= '2016-01-01' AND collision_date < '2022-01-01'
+    WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
     GROUP BY motor_vehicle_involved_with
 )
 SELECT valor, n, ROUND(100.0 * n / SUM(n) OVER (), 2) AS pct
@@ -125,7 +125,7 @@ FROM g ORDER BY n DESC NULLS LAST LIMIT 30;
 WITH g AS (
     SELECT collision_severity AS valor, COUNT(*) AS n
     FROM sw.collisions
-    WHERE collision_date >= '2016-01-01' AND collision_date < '2022-01-01'
+    WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
     GROUP BY collision_severity
 )
 SELECT valor, n, ROUND(100.0 * n / SUM(n) OVER (), 2) AS pct
@@ -135,7 +135,7 @@ FROM g ORDER BY n DESC NULLS LAST LIMIT 30;
 WITH g AS (
     SELECT county_location AS valor, COUNT(*) AS n
     FROM sw.collisions
-    WHERE collision_date >= '2016-01-01' AND collision_date < '2022-01-01'
+    WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
     GROUP BY county_location
 )
 SELECT valor, n, ROUND(100.0 * n / SUM(n) OVER (), 2) AS pct
@@ -148,7 +148,7 @@ WITH g AS (
     WHERE EXISTS (
         SELECT 1 FROM sw.collisions AS c
         WHERE c.case_id = p.case_id
-          AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01'
+          AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
     )
     GROUP BY p.party_type
 )
@@ -162,7 +162,7 @@ WITH g AS (
     WHERE EXISTS (
         SELECT 1 FROM sw.collisions AS c
         WHERE c.case_id = p.case_id
-          AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01'
+          AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
     )
     GROUP BY p.party_sobriety
 )
@@ -176,7 +176,7 @@ WITH g AS (
     WHERE EXISTS (
         SELECT 1 FROM sw.collisions AS c
         WHERE c.case_id = p.case_id
-          AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01'
+          AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
     )
     GROUP BY p.direction_of_travel
 )
@@ -190,7 +190,7 @@ WITH g AS (
     WHERE EXISTS (
         SELECT 1 FROM sw.collisions AS c
         WHERE c.case_id = p.case_id
-          AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01'
+          AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
     )
     GROUP BY p.party_race
 )
@@ -204,7 +204,7 @@ WITH g AS (
     WHERE EXISTS (
         SELECT 1 FROM sw.collisions AS c
         WHERE c.case_id = p.case_id
-          AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01'
+          AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
     )
     GROUP BY p.party_sex
 )
@@ -218,7 +218,7 @@ WITH g AS (
     WHERE EXISTS (
         SELECT 1 FROM sw.collisions AS c
         WHERE c.case_id = v.case_id
-          AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01'
+          AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
     )
     GROUP BY v.victim_role
 )
@@ -232,7 +232,7 @@ WITH g AS (
     WHERE EXISTS (
         SELECT 1 FROM sw.collisions AS c
         WHERE c.case_id = v.case_id
-          AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01'
+          AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
     )
     GROUP BY v.victim_sex
 )
@@ -246,7 +246,7 @@ WITH g AS (
     WHERE EXISTS (
         SELECT 1 FROM sw.collisions AS c
         WHERE c.case_id = v.case_id
-          AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01'
+          AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
     )
     GROUP BY v.victim_degree_of_injury
 )
@@ -260,7 +260,7 @@ WITH g AS (
     WHERE EXISTS (
         SELECT 1 FROM sw.collisions AS c
         WHERE c.case_id = v.case_id
-          AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01'
+          AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
     )
     GROUP BY v.victim_seating_position
 )
@@ -274,7 +274,7 @@ WITH g AS (
     WHERE EXISTS (
         SELECT 1 FROM sw.collisions AS c
         WHERE c.case_id = v.case_id
-          AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01'
+          AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
     )
     GROUP BY v.victim_safety_equipment_1
 )
