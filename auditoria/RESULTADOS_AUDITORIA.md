@@ -26,7 +26,7 @@ Evaluar de forma empírica y reproducible la calidad, completitud, estructura, s
 |---|---|---|---|
 | `sw.collisions` | 9.424.334 | **4.368.293** | Un registro por evento de colisión (`case_id`). |
 | `sw.parties` | 18.669.166 | **8.688.142** | Un registro por actor/vehículo involucrado en el siniestro. |
-| `sw.victims` | 9.639.334 | **4.280.801** | Un registro por persona lesionada o fallecida. |
+| `sw.victims` | 9.639.334 | **4.280.801** | Un registro por persona reportada como víctima (conductor, pasajero, peatón o ciclista), sea fallecida, lesionada o ilesa (`no injury`). |
 | `sw.case_ids` | 9.424.334 | **4.368.293** | Catálogo índice de identificadores únicos de colisión. |
 
 ---
@@ -55,7 +55,7 @@ Evaluar de forma empírica y reproducible la calidad, completitud, estructura, s
 - **Severidad del evento (`collision_severity`):**
   - *Property damage only* (Solo daños materiales): 2.591.057 (59,31%)
   - *Pain* (Queja de dolor): 1.102.846 (25,25%)
-  - *Other visible injury* (Lesión visible no grave): 535.313 (12,25%)
+  - *Other injury* (Otra lesión visible no grave): 535.313 (12,25%)
   - *Severe injury* (Lesión grave): 108.209 (2,48%)
   - *Fatal* (Colisión mortal): 30.867 (0,71%)
   - *Código basura `N`:* 1 caso (0,00%). Se canaliza a `id=0 Sin clasificar`.
@@ -81,9 +81,10 @@ Evaluar de forma empírica y reproducible la calidad, completitud, estructura, s
   - En la base cruda, `alcohol_involved` solo contiene dos estados: `1` (440.917 colisiones; 10,09%) y `NULL` (3.927.376 colisiones; 89,91%). **No existe el valor 0 en la fuente.**
   - *Regla metodológica:* En el formulario policial CHP 555, el oficial marca la casilla únicamente ante evidencia flagrante o prueba positiva. La ausencia de marca (`NULL`) significa que no se reportó o no se practicó prueba, **no una prueba negativa de sobriedad**. No se debe colapsar a `FALSE` bajo la suposición de "sobrio verificado".
 - **Georreferenciación (`latitude`, `longitude`):**
-  - Coordenadas no nulas dentro de California (lat 32°–43° N, lon -125° a -114° O): **2.159.739** (49,44%).
-  - Coordenadas fuera de rango geográfico: **1** caso.
-  - Coordenadas nulas: **2.208.554** (50,56%).
+  - Par de coordenadas completo y dentro de California (lat 32°–43° N, lon -125° a -114° O): **2.159.739** (49,44%).
+  - Par completo fuera de California: **0** casos.
+  - Par incompleto (longitud sin latitud, lon = -37,06): **1** caso. No es un punto válido y se trata como sin coordenadas.
+  - Par nulo: **2.208.553** (50,56%). Junto con el par incompleto, **2.208.554** colisiones quedan sin georreferencia.
   - *Regla metodológica:* Prohibido imputar coordenadas (centroides o ceros). Se diseña una tabla de extensión de grano `1:0..1` (`hecho_colision_geo`) y una bandera booleana `tiene_coordenadas` en el hecho principal.
 - **Hora del siniestro (`collision_time`):** 39.693 nulos (0,91%). Se mantiene como hora desconocida; prohibido imputar `00:00:00` para no distorsionar las colisiones de medianoche.
 
@@ -100,7 +101,7 @@ La auditoría comprobó la consistencia aditiva entre las medidas escalares decl
 ### 5. Claves Candidatas e Integridad Referencial (05_integridad_duplicados.sql)
 - **Unicidad de `collisions.case_id`:** 4.368.293 identificadores únicos, **0 duplicados** y **0 nulos**. Es la clave primaria natural absoluta del hecho de colisiones.
 - **Clave candidata en `parties`:** La combinación compuesta `(case_id, party_number)` presenta 8.688.142 registros y **0 duplicados**.
-- **Evaluación de `victims.id`:** La columna preexistente `id` en `victims` presenta **1 duplicado** en el período. Por tanto, no puede ser adoptada como clave primaria sin generar una clave subrogada determinista en la normalización.
+- **Evaluación de `parties.id` y `victims.id`:** Ninguna de las dos columnas `id` es clave. `parties.id` presenta **3 duplicados** y `victims.id` **1 duplicado** (el id 4439952 aparece en dos colisiones distintas). `victims` además carece de un número de víctima dentro de la parte, por lo que requiere una clave subrogada determinista generada en la normalización.
 - **Registros huérfanos:**
   - Partes sin colisión padre (`parties -> collisions`): **0 huérfanos** (100% integridad).
   - Víctimas sin colisión padre (`victims -> collisions`): **0 huérfanos** (100% integridad).
@@ -112,14 +113,10 @@ La auditoría comprobó la consistencia aditiva entre las medidas escalares decl
   - Las tablas dimensionales definitivas deben generarse desde cero en la Fase 2 durante el pipeline de normalización, no heredarse del prototipo.
 
 ### 6. Rangos Numéricos y Protocolo de Cuarentena (04_fanout_rangos.sql)
-- **Edad de participantes (`party_age`):** Rango de 0 a 125 años. Media en rango limpio (0–110): 39,3 años. Se identificaron 38 registros > 110 años.
-- **Edad de víctimas (`victim_age`):** Media en rango limpio: 32,4 años. Se detectaron 48 registros con códigos centinela 998/999 y 171 registros con edad > 110.
-- **Año-modelo del vehículo (`vehicle_year`):**
-  - Rango válido verificado: 1900 a 2020.
-  - Media del parque automotor involucrado: **año 2005,5**.
-  - Nulos: 869.373 registros (10,01%), asociados primordialmente a peatones, ciclistas y vehículos que se dieron a la fuga (*hit and run*).
-  - Atípicos fuera de período: únicamente **2 registros** reportaron año > 2020.
-- **Tratamiento metodológico:** Todo registro atípico o código centinela (998/999) se traslada a la categoría `Desconocido / En cuarentena` en la dimensión correspondiente, garantizando que el evento de colisión y las métricas de víctimas no se eliminen del hecho principal.
+- **Edad de participantes (`party_age`):** Rango crudo de 0 a 125 años. No se detectaron códigos centinela 998/999 (0 registros). Se identificaron **38 registros con edad real fuera del rango 0–110** (máximo 125). Media en rango limpio (0–110): 39,3 años.
+- **Edad de víctimas (`victim_age`):** Rango crudo de 0 a 999 años. Se detectaron **48 registros con códigos centinela 998/999** y **171 registros totales fuera del rango 0–110** (los 48 centinela están incluidos en los 171; el resto son edades reales >110). Media en rango limpio: 32,4 años. Los códigos centinela no se contabilizan como edades reales extremas.
+- **Año-modelo del vehículo (`vehicle_year`):** Rango válido verificado: 1900 a 2020. Se identificaron **2 registros fuera de rango, ambos con año 2021** (ninguno menor a 1900). Nulos: 869.373 registros (10,01%), asociados primordialmente a peatones, ciclistas, vehículos estacionados y vehículos que se dieron a la fuga (*hit and run*).
+- **Tratamiento metodológico:** Todo registro con código centinela (998/999) o edad/año fuera de rango definido se traslada a la categoría `Desconocido / En cuarentena` en la dimensión correspondiente, garantizando que el evento de colisión y las métricas de víctimas no se eliminen del hecho principal. No se eliminan ni modifican registros de la fuente.
 
 ---
 
@@ -134,8 +131,8 @@ La auditoría comprobó la consistencia aditiva entre las medidas escalares decl
 | **CP-05** | Georreferenciación y nulos de coordenadas | **⚠️ ADVERTENCIA** | 50,56% nulos. Requiere tabla satélite 1:0..1 `hecho_colision_geo`. |
 | **CP-06** | Semántica de alcohol involucrado | **✅ CORRECTO** | 440.917 con alcohol (10,09%); 3.927.376 no reportado/nulo (89,91%). |
 | **CP-07** | Consistencia de métricas de severidad | **✅ CORRECTO** | Muertos declarados (33.541) = muertos reales (33.541); Heridos (2.491.217) = heridos reales (2.491.217). |
-| **CP-08** | Control de rangos (edad y año vehículo) | **⚠️ ADVERTENCIA** | 38 edades de partes > 110; 48 códigos 998/999; 2 años > 2020. Cuarentena sin eliminación. |
-| **CP-09** | Coherencia entre SQL y documentación | **✅ CORRECTO** | Scripts 01–06, suite automatizada y documentación sincronizados en 2010–2019. |
+| **CP-08** | Control de rangos (edad y año vehículo) | **⚠️ ADVERTENCIA** | 38 `party_age` > 110; 171 `victim_age` fuera de 0–110 (48 son centinelas 998/999); 2 `vehicle_year` = 2021. Cuarentena sin eliminación. |
+| **CP-09** | Coherencia entre scripts SQL y documentación | **✅ CORRECTO** | Scripts 01–06 alineados con el período 2010–2019; las comprobaciones de consistencia se leen directamente de cada query ejecutado. |
 
 ---
 
@@ -144,7 +141,7 @@ La auditoría comprobó la consistencia aditiva entre las medidas escalares decl
 1. **Grano del Hecho Principal:**
    - `hecho_colision`: Grano de evento colisión identificado por `case_id` (o su clave subrogada entera `collision_sk`).
    - `hecho_victimas`: Grano por víctima involucrada, relacionado con la colisión y el participante padre.
-   - `hecho_colision_geo`: Extensión de grano `1:0..1` exclusiva para las 2.159.739 colisiones con latitud/longitud válidas.
+   - `hecho_colision_geo`: Extensión de grano `1:0..1` exclusiva para las 2.159.739 colisiones con par completo de latitud/longitud dentro de California.
 2. **Dimensiones Confirmadas:**
    - `dim_fecha`: Pre-generación de los 3.652 días decenales (2010-01-01 a 2019-12-31).
    - `dim_county`: Los 58 condados oficiales de California.
@@ -166,4 +163,4 @@ Los datos de colisiones de tránsito de California para el período **2010–201
 
 Los riesgos identificados (50,56% de coordenadas nulas, atípicos centinela 998/999 en edad y codificación asimétrica en `alcohol_involved`) no comprometen la viabilidad de la investigación, pues cuentan con tratamientos metodológicos claros y documentados (tabla satélite geográfica, categorías de cuarentena y distinción semántica de alcohol).
 
-**Dictamen:** La fuente de datos está formalmente **aprobada y lista** para proceder con la Fase 2 de normalización a Tercera Forma Normal (3FN), diseño físico columnar en DuckDB y exportación a Parquet para el tablero de Power BI.
+**Dictamen:** La fuente de datos para el período 2010–2019 ha sido auditada y documentada. Los hallazgos identificados (cobertura de coordenadas, códigos centinela 998/999, alcohol_involved sin valor 0) cuentan con tratamientos metodológicos claros. Se encuentra lista para proceder con la Fase 2 de normalización y diseño del modelo dimensional, bajo las condiciones y limitaciones descritas.

@@ -1,6 +1,7 @@
 -- 04_fanout_rangos.sql
 -- EECA-UCV, Computacion II | Auditoria SWITRS California 2010-2019
--- Que responde: si los totales cuadran y que numeros raros hay (999, 8744).
+-- Que responde: si los totales cuadran y que numeros raros hay (codigos centinela
+-- 998/999 en victim_age, edades > 110, vehicle_year fuera de 1900-2020, coordenadas incompletas).
 -- Para el perfil de siniestros: que cifras son de fiar y cuales se apartan
 -- antes de armar los perfiles de edad, vehiculo y gravedad.
 
@@ -71,7 +72,8 @@ FROM (
                           AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01')) AS victimas_grado_unknown
 ) AS control_b2;
 
--- Control C1. party_age crudo (mentiroso) vs limpio 0-110: expone 998/999.
+-- Control C1. party_age crudo vs limpio 0-110. En 2010-2019 party_age NO usa 998/999
+-- (0 casos); sus atipicos son edades reales > 110 (max 125).
 SELECT MIN(p.party_age) AS min_crudo,
        MAX(p.party_age) AS max_crudo,
        AVG(p.party_age) AS avg_crudo_mentiroso,
@@ -86,7 +88,8 @@ FROM sw.parties AS p
 WHERE EXISTS (SELECT 1 FROM sw.collisions AS c WHERE c.case_id = p.case_id
               AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01');
 
--- Control C2. victim_age crudo vs limpio 0-110.
+-- Control C2. victim_age crudo vs limpio 0-110. Aqui si aparecen centinelas 998/999,
+-- que quedan incluidos dentro de n_fuera_rango (no se suman aparte).
 SELECT MIN(v.victim_age) AS min_crudo,
        MAX(v.victim_age) AS max_crudo,
        AVG(v.victim_age) AS avg_crudo_mentiroso,
@@ -113,11 +116,17 @@ FROM sw.parties AS p
 WHERE EXISTS (SELECT 1 FROM sw.collisions AS c WHERE c.case_id = p.case_id
               AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01');
 
--- Control D1. Coordenadas dentro/fuera del bbox California (lat 32-43, lon -125 a -114).
+-- Control D1. Coordenadas: par completo dentro/fuera del bbox California
+-- (lat 32-43, lon -125 a -114), par incompleto (solo una coordenada) y par nulo.
+-- Las categorias son excluyentes y suman n_total. Un par incompleto no es un
+-- punto valido: va al grupo sin coordenadas, no a la tabla geo.
 SELECT COUNT(*) AS n_total,
-       SUM(CASE WHEN latitude BETWEEN 32 AND 43 AND longitude BETWEEN -125 AND -114 THEN 1 ELSE 0 END) AS n_dentro_bbox,
-       SUM(CASE WHEN NOT (latitude BETWEEN 32 AND 43 AND longitude BETWEEN -125 AND -114) THEN 1 ELSE 0 END) AS n_fuera_o_nulo,
-       SUM(CASE WHEN latitude IS NULL OR longitude IS NULL THEN 1 ELSE 0 END) AS n_nulos,
+       SUM(CASE WHEN latitude IS NOT NULL AND longitude IS NOT NULL
+                 AND latitude BETWEEN 32 AND 43 AND longitude BETWEEN -125 AND -114 THEN 1 ELSE 0 END) AS n_par_dentro_bbox,
+       SUM(CASE WHEN latitude IS NOT NULL AND longitude IS NOT NULL
+                 AND NOT (latitude BETWEEN 32 AND 43 AND longitude BETWEEN -125 AND -114) THEN 1 ELSE 0 END) AS n_par_fuera_bbox,
+       SUM(CASE WHEN (latitude IS NULL) <> (longitude IS NULL) THEN 1 ELSE 0 END) AS n_par_incompleto,
+       SUM(CASE WHEN latitude IS NULL AND longitude IS NULL THEN 1 ELSE 0 END) AS n_par_nulo,
        'CUARENTENA' AS decision_normalizacion
 FROM sw.collisions
 WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01';
@@ -129,7 +138,7 @@ SELECT MIN(latitude) AS min_lat, MAX(latitude) AS max_lat,
 FROM sw.collisions
 WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01';
 
--- Control E1. party_count sospechoso (verificado global: MIN 0, MAX 25).
+-- Control E1. party_count sospechoso (en 2010-2019: MIN 0, MAX 38).
 SELECT SUM(CASE WHEN party_count = 0 THEN 1 ELSE 0 END) AS n_party_count_cero,
        SUM(CASE WHEN party_count > 20 THEN 1 ELSE 0 END) AS n_party_count_mayor_20,
        MIN(party_count) AS min_party_count,

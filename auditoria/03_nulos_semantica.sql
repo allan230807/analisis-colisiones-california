@@ -169,7 +169,7 @@ SELECT 'parties.party_type' AS columna, COUNT(*) AS total,
        'REGLA DIM: id=0 Sin clasificar' AS regla_normalizacion
 FROM sw.parties AS p
 WHERE EXISTS (SELECT 1 FROM sw.collisions AS c WHERE c.case_id = p.case_id
-              AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01')
+              AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01')
 UNION ALL
 SELECT 'parties.party_sex', COUNT(*),
        SUM(CASE WHEN p.party_sex IS NULL THEN 1 ELSE 0 END),
@@ -177,7 +177,7 @@ SELECT 'parties.party_sex', COUNT(*),
        'REGLA DIM sexo: id=0 para NULL + LOWER(TRIM()) fuera de (male,female)'
 FROM sw.parties AS p
 WHERE EXISTS (SELECT 1 FROM sw.collisions AS c WHERE c.case_id = p.case_id
-              AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01')
+              AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01')
 UNION ALL
 SELECT 'parties.party_age', COUNT(*),
        SUM(CASE WHEN p.party_age IS NULL THEN 1 ELSE 0 END),
@@ -185,7 +185,7 @@ SELECT 'parties.party_age', COUNT(*),
        'REGLA script-04: NULL a grupo Desconocido; atipicos a cuarentena'
 FROM sw.parties AS p
 WHERE EXISTS (SELECT 1 FROM sw.collisions AS c WHERE c.case_id = p.case_id
-              AND c.collision_date >= '2016-01-01' AND c.collision_date < '2022-01-01')
+              AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01')
 UNION ALL
 SELECT 'parties.party_sobriety', COUNT(*),
        SUM(CASE WHEN p.party_sobriety IS NULL THEN 1 ELSE 0 END),

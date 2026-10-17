@@ -8,9 +8,14 @@ LOAD sqlite;
 ATTACH 'data/raw/switrs.sqlite' AS sw (TYPE sqlite, READ_ONLY);
 
 -- T01 Volumen collisions del periodo + rango + dias con datos + unicidad case_id.
+-- Se separa: total, nulos, no nulos, distintos y duplicados entre no nulos.
 SELECT COUNT(*) AS n_colisiones_10_19,
+       SUM(CASE WHEN case_id IS NULL THEN 1 ELSE 0 END) AS nulos_case_id,
+       COUNT(*) - SUM(CASE WHEN case_id IS NULL THEN 1 ELSE 0 END) AS no_nulos_case_id,
        COUNT(DISTINCT case_id) AS n_case_id_distintos,
-       COUNT(*) - COUNT(DISTINCT case_id) AS n_case_id_repetidos,
+       CASE WHEN SUM(CASE WHEN case_id IS NULL THEN 1 ELSE 0 END) = 0
+            THEN COUNT(*) - COUNT(DISTINCT case_id)
+            ELSE NULL END AS duplicados_case_id_entre_no_nulos,
        COUNT(DISTINCT collision_date) AS n_dias_con_datos,
        MIN(collision_date) AS min_fecha,
        MAX(collision_date) AS max_fecha

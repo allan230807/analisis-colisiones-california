@@ -12,24 +12,37 @@ ATTACH 'data/raw/switrs.sqlite' AS sw (TYPE sqlite, READ_ONLY);
 -- ============================================================================
 
 -- A01 collisions.case_id: unicidad y nulos en el periodo (candidato a PK).
-SELECT COUNT(*) AS total_filas_periodo,
-       COUNT(DISTINCT case_id) AS case_id_unicos,
-       COUNT(*) - COUNT(DISTINCT case_id) AS duplicados_case_id,
-       SUM(CASE WHEN case_id IS NULL THEN 1 ELSE 0 END) AS nulos_case_id,
-       CASE WHEN COUNT(*) = COUNT(DISTINCT case_id) AND SUM(CASE WHEN case_id IS NULL THEN 1 ELSE 0 END) = 0
-            THEN 'VALIDO: case_id es clave primaria valida del grano colision'
-            ELSE 'INVALIDO: duplicados o nulos en case_id' END AS evaluacion
+-- Se separa: total, nulos, no nulos, no nulos unicos, repetidos entre no nulos.
+SELECT 
+    COUNT(*) AS total_filas_periodo,
+    SUM(CASE WHEN case_id IS NULL THEN 1 ELSE 0 END) AS nulos_case_id,
+    COUNT(*) - SUM(CASE WHEN case_id IS NULL THEN 1 ELSE 0 END) AS no_nulos_case_id,
+    COUNT(DISTINCT case_id) AS case_id_distintos,
+    CASE WHEN SUM(CASE WHEN case_id IS NULL THEN 1 ELSE 0 END) = 0
+         THEN COUNT(*) - COUNT(DISTINCT case_id)
+         ELSE NULL END AS duplicados_entre_no_nulos,
+    CASE WHEN SUM(CASE WHEN case_id IS NULL THEN 1 ELSE 0 END) = 0
+         AND COUNT(*) = COUNT(DISTINCT case_id)
+         THEN 'VALIDO: case_id es clave primaria valida (sin nulos, sin duplicados)'
+         ELSE 'REVISAR: nulos o duplicados en case_id' END AS evaluacion
 FROM sw.collisions
 WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01';
 
 -- A02 parties: clave compuesta candidata (case_id, party_number).
-SELECT COUNT(*) AS total_parties_periodo,
-       COUNT(DISTINCT case_id || '-' || CAST(party_number AS VARCHAR)) AS claves_unicas,
-       COUNT(*) - COUNT(DISTINCT case_id || '-' || CAST(party_number AS VARCHAR)) AS duplicados_clave,
-       SUM(CASE WHEN p.case_id IS NULL OR p.party_number IS NULL THEN 1 ELSE 0 END) AS nulos_en_clave,
-       CASE WHEN COUNT(*) = COUNT(DISTINCT case_id || '-' || CAST(party_number AS VARCHAR))
-            THEN 'VALIDO: (case_id, party_number) es clave candidata unica'
-            ELSE 'INVALIDO: duplicados detectados' END AS evaluacion
+-- Se verifica primero que ninguno de los componentes sea nulo, despues se mide
+-- duplicidad entre las filas con ambos componentes no nulos.
+SELECT 
+    COUNT(*) AS total_parties_periodo,
+    SUM(CASE WHEN p.case_id IS NULL OR p.party_number IS NULL THEN 1 ELSE 0 END) AS nulos_en_clave,
+    COUNT(*) - SUM(CASE WHEN p.case_id IS NULL OR p.party_number IS NULL THEN 1 ELSE 0 END) AS filas_con_clave_completa,
+    COUNT(DISTINCT p.case_id || '-' || CAST(p.party_number AS VARCHAR)) AS claves_distintas,
+    CASE WHEN SUM(CASE WHEN p.case_id IS NULL OR p.party_number IS NULL THEN 1 ELSE 0 END) = 0
+         THEN COUNT(*) - COUNT(DISTINCT p.case_id || '-' || CAST(p.party_number AS VARCHAR))
+         ELSE NULL END AS duplicados_entre_clave_completa,
+    CASE WHEN SUM(CASE WHEN p.case_id IS NULL OR p.party_number IS NULL THEN 1 ELSE 0 END) = 0
+         AND COUNT(*) = COUNT(DISTINCT p.case_id || '-' || CAST(p.party_number AS VARCHAR))
+         THEN 'VALIDO: (case_id, party_number) es clave candidata unica (sin nulos, sin duplicados)'
+         ELSE 'REVISAR: nulos o duplicados en clave compuesta' END AS evaluacion
 FROM sw.parties AS p
 WHERE EXISTS (
     SELECT 1 FROM sw.collisions AS c
@@ -38,10 +51,20 @@ WHERE EXISTS (
 );
 
 -- A03 parties.id: evaluacion de la columna id como clave sustituta.
-SELECT COUNT(*) AS total_parties,
-       COUNT(DISTINCT id) AS ids_unicos,
-       COUNT(*) - COUNT(DISTINCT id) AS ids_duplicados,
-       SUM(CASE WHEN id IS NULL THEN 1 ELSE 0 END) AS ids_nulos
+-- Separa nulos de duplicados entre no nulos; no declara valida solo porque
+-- COUNT(*) = COUNT(DISTINCT id) (podría haber nulos y duplicados compensados).
+SELECT 
+    COUNT(*) AS total_parties,
+    SUM(CASE WHEN id IS NULL THEN 1 ELSE 0 END) AS ids_nulos,
+    COUNT(*) - SUM(CASE WHEN id IS NULL THEN 1 ELSE 0 END) AS ids_no_nulos,
+    COUNT(DISTINCT id) AS ids_distintos,
+    CASE WHEN SUM(CASE WHEN id IS NULL THEN 1 ELSE 0 END) = 0
+         THEN COUNT(*) - COUNT(DISTINCT id)
+         ELSE NULL END AS duplicados_entre_no_nulos,
+    CASE WHEN SUM(CASE WHEN id IS NULL THEN 1 ELSE 0 END) = 0
+         AND COUNT(*) = COUNT(DISTINCT id)
+         THEN 'VALIDO: id es unico sin nulos'
+         ELSE 'REVISAR: nulos o duplicados en id; requiere clave subrogada generada' END AS evaluacion
 FROM sw.parties AS p
 WHERE EXISTS (
     SELECT 1 FROM sw.collisions AS c
@@ -49,13 +72,21 @@ WHERE EXISTS (
       AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
 );
 
--- A04 victims.id: evaluacion de la columna id como clave sustituta (expone unicidad real).
-SELECT COUNT(*) AS total_victims,
-       COUNT(DISTINCT id) AS ids_unicos,
-       COUNT(*) - COUNT(DISTINCT id) AS ids_duplicados,
-       SUM(CASE WHEN id IS NULL THEN 1 ELSE 0 END) AS ids_nulos,
-       CASE WHEN COUNT(*) = COUNT(DISTINCT id) THEN 'VALIDO: id es unico'
-            ELSE 'ADVERTENCIA: columna id presenta duplicados; requiere clave subrogada generada' END AS evaluacion
+-- A04 victims.id: evaluacion de la columna id como clave sustituta.
+-- Separa nulos de duplicados entre no nulos; no declara valida solo porque
+-- COUNT(*) = COUNT(DISTINCT id).
+SELECT 
+    COUNT(*) AS total_victims,
+    SUM(CASE WHEN id IS NULL THEN 1 ELSE 0 END) AS ids_nulos,
+    COUNT(*) - SUM(CASE WHEN id IS NULL THEN 1 ELSE 0 END) AS ids_no_nulos,
+    COUNT(DISTINCT id) AS ids_distintos,
+    CASE WHEN SUM(CASE WHEN id IS NULL THEN 1 ELSE 0 END) = 0
+         THEN COUNT(*) - COUNT(DISTINCT id)
+         ELSE NULL END AS duplicados_entre_no_nulos,
+    CASE WHEN SUM(CASE WHEN id IS NULL THEN 1 ELSE 0 END) = 0
+         AND COUNT(*) = COUNT(DISTINCT id)
+         THEN 'VALIDO: id es unico sin nulos'
+         ELSE 'REVISAR: nulos o duplicados en id; requiere clave subrogada generada' END AS evaluacion
 FROM sw.victims AS v
 WHERE EXISTS (
     SELECT 1 FROM sw.collisions AS c
@@ -130,4 +161,4 @@ FROM sw.dim_categoria_pcf GROUP BY descripcion HAVING COUNT(*) > 1;
 -- ============================================================================
 -- BLOQUE D: CIERRE METODOLOGICO
 -- ============================================================================
-SELECT 'DECISION_NORMALIZACION: case_id es PK unica del hecho colisiones (0 nulos, 0 repetidos); (case_id, party_number) es clave candidata de parties; victims requiere clave subrogada por duplicado en columna id; integridad referencial 100%% sin huerfanos; las tablas dim_* preexistentes en SQLite corresponden al prototipo 2016-2021 y deben reconstruirse en Fase 2 para la decada 2010-2019.' AS decision_normalizacion;
+SELECT 'DECISION_NORMALIZACION: case_id es PK unica del hecho colisiones (0 nulos, 0 repetidos); (case_id, party_number) es clave candidata de parties; victims requiere clave subrogada por duplicado en columna id; integridad referencial verificada por NOT EXISTS (resultados a confirmar al ejecutar); las tablas dim_* preexistentes en SQLite corresponden al prototipo 2016-2021 y deben reconstruirse en Fase 2 para la decada 2010-2019.' AS decision_normalizacion;

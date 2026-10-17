@@ -61,18 +61,14 @@ analisis-colisiones-california/
 │   ├── 04_fanout_rangos.sql            ← Controles anti fan-out, consistencia de medidas y cuarentena
 │   ├── 05_integridad_duplicados.sql    ← Unicidad de claves primarias, foráneas y orfandad
 │   ├── 06_decision_estrella.sql        ← Evaluación conceptual de dimensiones y diseño Kimball
-│   ├── validar_auditoria.py            ← Suite automatizada de validación (comprobación de 9 criterios)
 │   └── RESULTADOS_AUDITORIA.md         ← Informe técnico con evidencia empírica decenal (2010–2019)
 │
-├── data/
-│   ├── raw/
-│   │   └── switrs.sqlite               ← Base de datos original SWITRS (~9 GB, no versionada)
-│   └── processed/                      ← Directorio reservado para artefactos limpios de Fase 2
-│
-├── notebooks/                          ← Reservado para exploración inferencial (Fase 3) ⏳
-├── src/                                ← Reservado para scripts del pipeline ETL DuckDB (Fase 2) ⏳
-└── visualizaciones/                    ← Reservado para especificaciones y PBIS (Fase 4) ⏳
+└── data/                               ← No versionado (.gitignore)
+    └── raw/
+        └── switrs.sqlite               ← Base de datos original SWITRS (~9,9 GB, 2001–2021)
 ```
+
+Directorios previstos para fases siguientes (aún no existen): `src/` (pipeline de normalización, Fase 2), `data/processed/` (Parquet normalizado, Fase 2), `notebooks/` (inferencia, Fase 3) y `visualizaciones/` (Power BI, Fase 4).
 
 ---
 
@@ -80,28 +76,23 @@ analisis-colisiones-california/
 
 ### 1. Requisitos de software
 - **DuckDB CLI** versión 1.1 o superior (recomendado para ejecución analítica de los scripts SQL).
-- **Python 3.10+** (para ejecutar la suite de validación automatizada).
 - Fuente original `switrs.sqlite` descargada y ubicada en `data/raw/switrs.sqlite`.
 
 ### 2. Instalación de dependencias
+La auditoría solo necesita el CLI de DuckDB. `requirements.txt` declara las dependencias Python (DuckDB, PyArrow, pandas) que usará el pipeline de la Fase 2:
 ```bash
 pip install -r requirements.txt
 ```
 
+Los scripts usan la ruta relativa `data/raw/switrs.sqlite`, por lo que deben ejecutarse **desde la raíz del repositorio**.
+
 ---
 
-## 🚀 Orden y Forma de Ejecución de la Auditoría
+## 🚀 Ejecución de los scripts SQL de auditoría
 
-Los scripts de auditoría están parametrizados para operar en modo solo lectura (`READ_ONLY`), sin alterar los datos originales ni crear tablas prematuras en la base de datos fuente.
+Los scripts de auditoría están parametrizados para operar en modo solo lectura (`READ_ONLY`), sin alterar los datos originales ni crear tablas prematuras en la base de datos fuente. Cada script consulta directamente el archivo `data/raw/switrs.sqlite` a través de DuckDB.
 
-### Opción A: Ejecución de la Suite Automatizada (Recomendada)
-Ejecuta de forma secuencial las 9 pruebas de calidad, integridad y consistencia matemática:
-```bash
-python3 auditoria/validar_auditoria.py
-```
-
-### Opción B: Ejecución modular vía DuckDB CLI
-Para inspeccionar en detalle las consultas de cada dimensión:
+Para ejecutarlos de forma secuencial:
 ```bash
 # 1. Catálogos y frecuencias de variables categóricas
 duckdb -dark-mode < auditoria/01_catalogos_frecuencias.sql
@@ -127,8 +118,8 @@ duckdb -dark-mode < auditoria/06_decision_estrella.sql
 ## 📊 Estado de Pruebas y Fases del Proyecto
 
 - **Fase 1: Auditoría Integral y Calidad de Datos (COMPLETADA ✅)**
-  - Todas las pruebas de calidad (CP-01 a CP-09) ejecutadas sobre los 4,36M de colisiones de 2010–2019.
-  - Resultados empíricos, conteos y porcentajes documentados en [`auditoria/RESULTADOS_AUDITORIA.md`](file:///Users/lobsang/Desktop/analisis-colisiones-california/auditoria/RESULTADOS_AUDITORIA.md).
+  - Se eliminó `auditoria/validar_auditoria.py`; las validaciones pasan por la ejecución directa de los 6 scripts SQL sobre DuckDB.
+  - Resultados empíricos, conteos y porcentajes documentados en [`auditoria/RESULTADOS_AUDITORIA.md`](auditoria/RESULTADOS_AUDITORIA.md).
 - **Fase 2: Normalización y Pipeline ETL (PENDIENTE ⏳)**
   - Construcción del esquema en estrella normalizado (tablas de hechos y dimensiones con clave subrogada determinista).
   - Exportación a formato particionado Parquet + compresión ZSTD.
