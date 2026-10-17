@@ -1,4 +1,4 @@
-# Dependencias base para procesamiento analítico de SWITRS
-duckdb>=1.0.0
-pyarrow>=14.0.0
-pandas>=2.1.0
+# Dependencias del pipeline de normalizacion (base_de_datos/).
+# Version fijada: el Parquet exportado es identico byte a byte solo con la misma
+# version de DuckDB; otra version regeneraria los 139 MB en el historial de git.
+duckdb==1.5.6

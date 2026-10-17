@@ -284,6 +284,15 @@ def crear_victima(con):
 # BLOQUE 3 — VISTAS EN ESTRELLA
 # Las medidas se calculan sobre el grano correcto (COUNT sobre victima y parte),
 # por lo que ninguna vista puede inflar totales por fan-out.
+#
+# edad_vehiculo = anio de la colision - anio-modelo. Es la variable del
+# Objetivo 4: el anio-modelo por si solo mezcla la antiguedad del vehiculo con la
+# tendencia del calendario. Un modelo del anio siguiente (34.314 casos) da -1 y
+# se acota a 0. Sin anio-modelo, edad_vehiculo es NULL (GREATEST ignora NULL,
+# por eso el CASE explicito).
+#
+# edad_conductor_culpable es la variable del Objetivo 2: solo culpables con
+# tipo de parte 'driver'. edad_culpable incluye peatones y ciclistas culpables.
 # ==============================================================================
 
 def crear_vistas(con):
@@ -311,6 +320,7 @@ def crear_vistas(con):
                    ANY_VALUE(pa.tipo_vehiculo_id) FILTER (WHERE pa.culpable)       AS tipo_vehiculo_culpable_id,
                    ANY_VALUE(pa.tipo_parte_id) FILTER (WHERE pa.culpable)          AS tipo_parte_culpable_id,
                    ANY_VALUE(pa.edad) FILTER (WHERE pa.culpable)                   AS edad_culpable,
+                   ANY_VALUE(pa.edad) FILTER (WHERE pa.culpable AND tp.codigo = 'driver') AS edad_conductor_culpable,
                    ANY_VALUE(pa.anio_vehiculo) FILTER (WHERE pa.culpable)          AS anio_vehiculo_culpable
             FROM parte pa
             JOIN tipo_parte tp USING (tipo_parte_id)
@@ -335,7 +345,10 @@ def crear_vistas(con):
                p.tipo_parte_culpable_id,
                p.tipo_vehiculo_culpable_id,
                p.edad_culpable,
+               p.edad_conductor_culpable,
                p.anio_vehiculo_culpable,
+               CASE WHEN p.anio_vehiculo_culpable IS NOT NULL
+                    THEN GREATEST(year(c.fecha) - p.anio_vehiculo_culpable, 0) END AS edad_vehiculo_culpable,
                g.case_id IS NOT NULL                            AS tiene_coordenadas,
                k.case_id IS NOT NULL                            AS tiene_datos_caltrans
         FROM colision c
@@ -363,6 +376,8 @@ def crear_vistas(con):
                c.fecha,
                u.condado_id,
                COALESCE(b.banda_edad_id, 0)::UTINYINT          AS banda_edad_id,
+               CASE WHEN pa.anio_vehiculo IS NOT NULL
+                    THEN GREATEST(year(c.fecha) - pa.anio_vehiculo, 0) END AS edad_vehiculo,
                v.nivel_max_victimas,
                COALESCE(v.victimas, 0)                         AS victimas,
                COALESCE(v.muertos, 0)                          AS muertos,
@@ -385,6 +400,8 @@ def crear_vistas(con):
                pa.tipo_parte_id,
                pa.tipo_vehiculo_id,
                pa.anio_vehiculo,
+               CASE WHEN pa.anio_vehiculo IS NOT NULL
+                    THEN GREATEST(year(c.fecha) - pa.anio_vehiculo, 0) END AS edad_vehiculo,
                pa.culpable                                     AS parte_culpable,
                c.fecha,
                u.condado_id
