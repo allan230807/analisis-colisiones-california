@@ -34,10 +34,25 @@ case_id es 100% numerico (max 91.463.275): INTEGER de 4 bytes en lugar de TEXT
 en las tres tablas que lo repiten. Fechas DATE, hora TIME. Ids de catalogo,
 edades y numero de parte UTINYINT; anio de vehiculo y ubicacion USMALLINT.
 
-LLAVES FORANEAS
----------------
-Se declaran todas. DuckDB las verifica en cada insercion, de modo que un
-huerfano detiene la carga en lugar de colarse en la base.
+LLAVES: DECLARADAS EN CATALOGOS, VERIFICADAS EN EL NUCLEO
+---------------------------------------------------------
+DuckDB implementa cada PRIMARY KEY y cada FOREIGN KEY con un indice ART. Sobre
+tablas de millones de filas esos indices pesan mucho mas que los datos; se midio
+con la base cargada:
+
+    PK y FK declaradas en el nucleo ......... 3,2 GB
+    Solo PK declaradas en el nucleo ......... ~0,7 GB
+    Sin indices en el nucleo (base final) ... 301 MB   (fuente: 9,9 GB)
+
+Y no aceleran nada en un motor columnar: las consultas analiticas recorren
+columnas enteras con uniones por dispersion, no buscan filas sueltas.
+
+Por eso:
+  - Los catalogos (miles de filas como maximo) declaran PK, UNIQUE y FK.
+  - Las cinco tablas del nucleo documentan su PK y sus FK en comentarios y las
+    VERIFICA 03_procesamiento_carga.py con un control explicito por cada llave
+    (unicidad de la PK y anti-join por cada FK). Si alguno falla, la carga se
+    detiene con codigo 1.
 """
 
 import os
@@ -140,26 +155,26 @@ def crear_colision(con):
     """
     con.execute("""
         CREATE TABLE colision (
-            case_id                 INTEGER PRIMARY KEY,
-            fecha                   DATE NOT NULL REFERENCES calendario (fecha),
+            case_id                 INTEGER NOT NULL,                 -- PK
+            fecha                   DATE NOT NULL,  -- FK -> calendario
             hora                    TIME,                     -- NULL = hora desconocida
-            ubicacion_id            USMALLINT NOT NULL REFERENCES ubicacion (ubicacion_id),
+            ubicacion_id            USMALLINT NOT NULL,  -- FK -> ubicacion
             jurisdiccion            USMALLINT,
-            clima_id                UTINYINT NOT NULL REFERENCES clima (clima_id),
-            clima_2_id              UTINYINT REFERENCES clima (clima_id),
-            iluminacion_id          UTINYINT NOT NULL REFERENCES iluminacion (iluminacion_id),
-            superficie_id           UTINYINT NOT NULL REFERENCES superficie (superficie_id),
-            condicion_via_id        UTINYINT NOT NULL REFERENCES condicion_via (condicion_via_id),
-            condicion_via_2_id      UTINYINT REFERENCES condicion_via (condicion_via_id),
-            dispositivo_control_id  UTINYINT NOT NULL REFERENCES dispositivo_control (dispositivo_control_id),
-            tipo_colision_id        UTINYINT NOT NULL REFERENCES tipo_colision (tipo_colision_id),
-            implicado_con_id        UTINYINT NOT NULL REFERENCES implicado_con (implicado_con_id),
-            factor_primario_id      UTINYINT NOT NULL REFERENCES factor_primario (factor_primario_id),
-            categoria_infraccion_id UTINYINT NOT NULL REFERENCES categoria_infraccion (categoria_infraccion_id),
+            clima_id                UTINYINT NOT NULL,  -- FK -> clima
+            clima_2_id              UTINYINT,  -- FK -> clima
+            iluminacion_id          UTINYINT NOT NULL,  -- FK -> iluminacion
+            superficie_id           UTINYINT NOT NULL,  -- FK -> superficie
+            condicion_via_id        UTINYINT NOT NULL,  -- FK -> condicion_via
+            condicion_via_2_id      UTINYINT,  -- FK -> condicion_via
+            dispositivo_control_id  UTINYINT NOT NULL,  -- FK -> dispositivo_control
+            tipo_colision_id        UTINYINT NOT NULL,  -- FK -> tipo_colision
+            implicado_con_id        UTINYINT NOT NULL,  -- FK -> implicado_con
+            factor_primario_id      UTINYINT NOT NULL,  -- FK -> factor_primario
+            categoria_infraccion_id UTINYINT NOT NULL,  -- FK -> categoria_infraccion
             infraccion_codigo       INTEGER,                  -- pcf_violation
             infraccion_inciso       VARCHAR,                  -- pcf_violation_subsection
-            fuga_id                 UTINYINT NOT NULL REFERENCES fuga (fuga_id),
-            accion_peaton_id        UTINYINT NOT NULL REFERENCES accion_peaton (accion_peaton_id),
+            fuga_id                 UTINYINT NOT NULL,  -- FK -> fuga
+            accion_peaton_id        UTINYINT NOT NULL,  -- FK -> accion_peaton
             en_interseccion         BOOLEAN,
             vehiculo_remolcado      BOOLEAN,
             carretera_estatal       BOOLEAN,
@@ -176,7 +191,7 @@ def crear_subtipos_colision(con):
     """
     con.execute("""
         CREATE TABLE colision_geo (
-            case_id  INTEGER PRIMARY KEY REFERENCES colision (case_id),
+            case_id  INTEGER NOT NULL,      -- PK, FK -> colision
             latitud  DOUBLE NOT NULL,
             longitud DOUBLE NOT NULL
         )
@@ -184,8 +199,8 @@ def crear_subtipos_colision(con):
     # Bloque Caltrans: nulo o no nulo siempre en conjunto (07-N12).
     con.execute("""
         CREATE TABLE colision_carretera (
-            case_id                 INTEGER PRIMARY KEY REFERENCES colision (case_id),
-            condado_caltrans_id     UTINYINT NOT NULL REFERENCES condado (condado_id),
+            case_id                 INTEGER NOT NULL,   -- PK, FK -> colision
+            condado_caltrans_id     UTINYINT NOT NULL,  -- FK -> condado
             distrito_caltrans       UTINYINT,
             ruta_estatal            USMALLINT,
             prefijo_postmile        VARCHAR,
@@ -206,21 +221,21 @@ def crear_parte(con):
     """
     con.execute("""
         CREATE TABLE parte (
-            case_id                   INTEGER NOT NULL REFERENCES colision (case_id),
-            numero_parte              UTINYINT NOT NULL,
-            tipo_parte_id             UTINYINT NOT NULL REFERENCES tipo_parte (tipo_parte_id),
+            case_id                   INTEGER NOT NULL,   -- PK, FK -> colision
+            numero_parte              UTINYINT NOT NULL,  -- PK
+            tipo_parte_id             UTINYINT NOT NULL,  -- FK -> tipo_parte
             culpable                  BOOLEAN NOT NULL,
-            sexo_id                   UTINYINT NOT NULL REFERENCES sexo (sexo_id),
+            sexo_id                   UTINYINT NOT NULL,  -- FK -> sexo
             edad                      UTINYINT,
             edad_en_cuarentena        BOOLEAN NOT NULL,
-            raza_id                   UTINYINT NOT NULL REFERENCES raza (raza_id),
-            sobriedad_id              UTINYINT NOT NULL REFERENCES sobriedad (sobriedad_id),
-            droga_fisica_id           UTINYINT NOT NULL REFERENCES droga_fisica (droga_fisica_id),
-            direccion_id              UTINYINT NOT NULL REFERENCES direccion (direccion_id),
-            movimiento_previo_id      UTINYINT NOT NULL REFERENCES movimiento_previo (movimiento_previo_id),
-            equipo_seguridad_1_id     UTINYINT NOT NULL REFERENCES equipo_seguridad (equipo_seguridad_id),
-            equipo_seguridad_2_id     UTINYINT REFERENCES equipo_seguridad (equipo_seguridad_id),
-            tipo_vehiculo_id          UTINYINT NOT NULL REFERENCES tipo_vehiculo (tipo_vehiculo_id),
+            raza_id                   UTINYINT NOT NULL,  -- FK -> raza
+            sobriedad_id              UTINYINT NOT NULL,  -- FK -> sobriedad
+            droga_fisica_id           UTINYINT NOT NULL,  -- FK -> droga_fisica
+            direccion_id              UTINYINT NOT NULL,  -- FK -> direccion
+            movimiento_previo_id      UTINYINT NOT NULL,  -- FK -> movimiento_previo
+            equipo_seguridad_1_id     UTINYINT NOT NULL,  -- FK -> equipo_seguridad
+            equipo_seguridad_2_id     UTINYINT,  -- FK -> equipo_seguridad
+            tipo_vehiculo_id          UTINYINT NOT NULL,  -- FK -> tipo_vehiculo
             anio_vehiculo             USMALLINT,
             anio_vehiculo_en_cuarentena BOOLEAN NOT NULL,
             marca_vehiculo            VARCHAR,
@@ -235,8 +250,7 @@ def crear_parte(con):
             otra_infraccion_seccion   VARCHAR,
             otra_infraccion_sufijo    VARCHAR,
             factor_asociado_1         VARCHAR,
-            factor_asociado_2         VARCHAR,
-            PRIMARY KEY (case_id, numero_parte)
+            factor_asociado_2         VARCHAR
         )
     """)
 
@@ -250,20 +264,18 @@ def crear_victima(con):
     """
     con.execute("""
         CREATE TABLE victima (
-            case_id               INTEGER NOT NULL,
-            numero_parte          UTINYINT NOT NULL,
-            numero_victima        UTINYINT NOT NULL,
-            rol_victima_id        UTINYINT NOT NULL REFERENCES rol_victima (rol_victima_id),
-            sexo_id               UTINYINT NOT NULL REFERENCES sexo (sexo_id),
+            case_id               INTEGER NOT NULL,   -- PK, FK -> parte
+            numero_parte          UTINYINT NOT NULL,  -- PK, FK -> parte
+            numero_victima        UTINYINT NOT NULL,  -- PK
+            rol_victima_id        UTINYINT NOT NULL,  -- FK -> rol_victima
+            sexo_id               UTINYINT NOT NULL,  -- FK -> sexo
             edad                  UTINYINT,
             edad_en_cuarentena    BOOLEAN NOT NULL,
-            lesion_id             UTINYINT NOT NULL REFERENCES lesion (lesion_id),
-            asiento_id            UTINYINT NOT NULL REFERENCES asiento (asiento_id),
-            equipo_seguridad_1_id UTINYINT NOT NULL REFERENCES equipo_seguridad (equipo_seguridad_id),
-            equipo_seguridad_2_id UTINYINT REFERENCES equipo_seguridad (equipo_seguridad_id),
-            eyeccion_id           UTINYINT NOT NULL REFERENCES eyeccion (eyeccion_id),
-            PRIMARY KEY (case_id, numero_parte, numero_victima),
-            FOREIGN KEY (case_id, numero_parte) REFERENCES parte (case_id, numero_parte)
+            lesion_id             UTINYINT NOT NULL,  -- FK -> lesion
+            asiento_id            UTINYINT NOT NULL,  -- FK -> asiento
+            equipo_seguridad_1_id UTINYINT NOT NULL,  -- FK -> equipo_seguridad
+            equipo_seguridad_2_id UTINYINT,  -- FK -> equipo_seguridad
+            eyeccion_id           UTINYINT NOT NULL  -- FK -> eyeccion
         )
     """)
 
