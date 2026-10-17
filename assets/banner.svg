@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="340" viewBox="0 0 1280 340" role="img" aria-label="Perfiles de riesgo en colisiones de tránsito — California 2010–2019">
+  <defs>
+    <linearGradient id="cielo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B1F3A"/>
+      <stop offset="0.55" stop-color="#13315C"/>
+      <stop offset="1" stop-color="#1D4E89"/>
+    </linearGradient>
+    <linearGradient id="asfalto" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1B2433" stop-opacity="0.0"/>
+      <stop offset="1" stop-color="#0A111C" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="sol" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F5A623"/>
+      <stop offset="1" stop-color="#E4572E"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#F5A623" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#F5A623" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grilla" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="340" rx="18" fill="url(#cielo)"/>
+  <rect width="1280" height="340" rx="18" fill="url(#grilla)"/>
+
+  <!-- sol poniente sobre el Pacifico -->
+  <circle cx="1010" cy="196" r="150" fill="url(#halo)"/>
+  <circle cx="1010" cy="196" r="62" fill="url(#sol)" opacity="0.9"/>
+  <clipPath id="disco"><circle cx="1010" cy="196" r="62"/></clipPath>
+  <g fill="#13315C" opacity="0.9" clip-path="url(#disco)">
+    <rect x="940" y="176" width="140" height="5"/>
+    <rect x="940" y="192" width="140" height="7"/>
+    <rect x="940" y="210" width="140" height="9"/>
+  </g>
+
+  <!-- colinas -->
+  <path d="M0 250 C 160 200, 300 230, 430 215 S 700 180, 860 222 S 1120 200, 1280 230 L1280 340 L0 340 Z" fill="#0F2747"/>
+
+  <!-- autopista en perspectiva -->
+  <path d="M1010 232 L 1280 340 L 640 340 Z" fill="#111A27"/>
+  <path d="M1010 232 L 1280 340 L 640 340 Z" fill="url(#asfalto)"/>
+  <path d="M1010 232 L 640 340" stroke="#F5A623" stroke-width="3" opacity="0.8"/>
+  <path d="M1010 232 L 1280 340" stroke="#F5A623" stroke-width="3" opacity="0.8"/>
+  <path d="M1010 232 L 960 340" stroke="#FFFFFF" stroke-width="4" stroke-dasharray="14 16" opacity="0.75"/>
+
+  <!-- puntos de colisiones (dispersion geografica estilizada) -->
+  <g fill="#E4572E">
+    <circle cx="720" cy="120" r="3" opacity="0.8"/>
+    <circle cx="760" cy="150" r="4" opacity="0.6"/>
+    <circle cx="805" cy="95" r="2.5" opacity="0.7"/>
+    <circle cx="840" cy="135" r="3.5" opacity="0.5"/>
+    <circle cx="690" cy="170" r="2.5" opacity="0.6"/>
+    <circle cx="1170" cy="80" r="3" opacity="0.6"/>
+    <circle cx="1210" cy="120" r="2.5" opacity="0.7"/>
+    <circle cx="1140" cy="130" r="4" opacity="0.4"/>
+  </g>
+  <g fill="#F5A623">
+    <circle cx="780" cy="118" r="2" opacity="0.8"/>
+    <circle cx="730" cy="190" r="2" opacity="0.7"/>
+    <circle cx="1195" cy="95" r="2" opacity="0.8"/>
+  </g>
+
+  <!-- texto -->
+  <g font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <text x="64" y="86" fill="#F5A623" font-size="18" font-weight="700" letter-spacing="4">SWITRS · CALIFORNIA HIGHWAY PATROL</text>
+    <text x="64" y="146" fill="#FFFFFF" font-size="50" font-weight="800">Perfiles de riesgo en</text>
+    <text x="64" y="204" fill="#FFFFFF" font-size="50" font-weight="800">colisiones de tránsito</text>
+    <text x="64" y="246" fill="#B9CBE4" font-size="22" font-weight="500">California · 2010–2019 · Auditoría, normalización 3FN y análisis</text>
+
+    <g font-size="15" font-weight="700">
+      <rect x="64" y="272" width="168" height="34" rx="17" fill="#FFFFFF" fill-opacity="0.08" stroke="#F5A623" stroke-opacity="0.6"/>
+      <text x="148" y="294" fill="#FFFFFF" text-anchor="middle">4,37 M colisiones</text>
+      <rect x="244" y="272" width="148" height="34" rx="17" fill="#FFFFFF" fill-opacity="0.08" stroke="#F5A623" stroke-opacity="0.6"/>
+      <text x="318" y="294" fill="#FFFFFF" text-anchor="middle">8,69 M partes</text>
+      <rect x="404" y="272" width="154" height="34" rx="17" fill="#FFFFFF" fill-opacity="0.08" stroke="#F5A623" stroke-opacity="0.6"/>
+      <text x="481" y="294" fill="#FFFFFF" text-anchor="middle">4,28 M víctimas</text>
+    </g>
+  </g>
+</svg>
