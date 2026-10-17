@@ -76,7 +76,9 @@ WHERE c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'
 GROUP BY anio
 ORDER BY anio;
 
--- T04 Victims por anio.
+-- T04 Victims por anio. Ojo: desde 2017 SWITRS reporta ~65% menos victimas ilesas
+-- (no injury), por lo que el total anual de victimas no es comparable antes/despues
+-- de 2017; la serie homologada por nivel KABCO esta en 07-N15.
 SELECT CAST(substr(c.collision_date, 1, 4) AS INTEGER) AS anio,
        COUNT(*) AS n_victimas
 FROM sw.victims AS v
@@ -132,4 +134,4 @@ SELECT ROUND((SELECT COUNT(*) FROM sw.collisions
 FROM diario;
 
 -- T08 Cierre metodologico: resumen del volumen temporal 2010-2019.
-SELECT 'DECISION_NORMALIZACION: cobertura decenal 2010-2019 completa y continua (10 anos, 3.652 dias exactos sin huecos); particionar hechos por anio (10 particiones 2010-2019); precargar dim_fecha con 3.652 dias; case_id verificado como PK unica sin duplicados.' AS decision_normalizacion;
+SELECT 'DECISION_NORMALIZACION: cobertura decenal 2010-2019 completa y continua (3.652 dias sin huecos); collision_date se almacena como DATE y collision_time como TIME (NULL = hora desconocida); dim_fecha se genera por calendario (3.652 dias), no a partir de los datos; los hechos se particionan por anio (10 particiones Parquet); el total anual de victimas no es comparable antes/despues de 2017 para ilesos (07-N15).' AS decision_normalizacion;

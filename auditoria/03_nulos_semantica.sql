@@ -18,25 +18,25 @@ UNION ALL
 SELECT 'collisions.pedestrian_collision', COUNT(*),
        SUM(CASE WHEN pedestrian_collision IS NULL THEN 1 ELSE 0 END),
        ROUND(100.0 * SUM(CASE WHEN pedestrian_collision IS NULL THEN 1 ELSE 0 END) / COUNT(*), 2),
-       'REGLA T6: BOOLEAN NOT NULL; COALESCE(col,0)'
+       'REGLA 3FN: derivable de parties (07-N10); no se almacena, se calcula en vista'
 FROM sw.collisions WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
 UNION ALL
 SELECT 'collisions.bicycle_collision', COUNT(*),
        SUM(CASE WHEN bicycle_collision IS NULL THEN 1 ELSE 0 END),
        ROUND(100.0 * SUM(CASE WHEN bicycle_collision IS NULL THEN 1 ELSE 0 END) / COUNT(*), 2),
-       'REGLA T6: BOOLEAN NOT NULL; COALESCE(col,0)'
+       'REGLA 3FN: derivable de parties (07-N10); no se almacena, se calcula en vista'
 FROM sw.collisions WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
 UNION ALL
 SELECT 'collisions.motorcycle_collision', COUNT(*),
        SUM(CASE WHEN motorcycle_collision IS NULL THEN 1 ELSE 0 END),
        ROUND(100.0 * SUM(CASE WHEN motorcycle_collision IS NULL THEN 1 ELSE 0 END) / COUNT(*), 2),
-       'REGLA T6: BOOLEAN NOT NULL; COALESCE(col,0)'
+       'REGLA 3FN: derivable de parties (07-N10); no se almacena, se calcula en vista'
 FROM sw.collisions WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
 UNION ALL
 SELECT 'collisions.truck_collision', COUNT(*),
        SUM(CASE WHEN truck_collision IS NULL THEN 1 ELSE 0 END),
        ROUND(100.0 * SUM(CASE WHEN truck_collision IS NULL THEN 1 ELSE 0 END) / COUNT(*), 2),
-       'REGLA T6: BOOLEAN NOT NULL; COALESCE(col,0)'
+       'REGLA 3FN: derivable de parties (07-N10); no se almacena, se calcula en vista'
 FROM sw.collisions WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01';
 
 -- C02 Valores distintos por bandera (justifica el COALESCE: solo se admite 0/1/NULL).
@@ -285,4 +285,4 @@ WHERE EXISTS (SELECT 1 FROM sw.collisions AS c WHERE c.case_id = v.case_id
               AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01');
 
 -- C09 Cierre: como se trata cada vacio en el perfil.
-SELECT 'DECISION_NORMALIZACION: alcohol_involved distingue 1 (confirmado) vs NULL (no reportado/desconocido), no colapsar a 0 como ausencia verificada; resto de banderas a TINYINT/BOOLEAN con 0/1; lat/lon a tabla 1:0..1 + tiene_coordenadas (nunca imputar coordenadas); todo codigo/texto a su dim con id=0 Sin clasificar; edades y vehicle_year a grupos con Desconocido + cuarentena de atipicos en 04; collision_time NULL se mantiene (hora desconocida).' AS decision_normalizacion;
+SELECT 'DECISION_NORMALIZACION: alcohol_involved se almacena BOOLEAN con NULL semantico (TRUE = confirmado, NULL = no reportado; nunca FALSE); pedestrian/bicycle/motorcycle/truck_collision no se almacenan (derivables de parties, 07-N10); lat/lon solo en tabla 1:0..1 con par completo + bandera tiene_coordenadas en vista; todo codigo/texto a su catalogo con id=0 Sin clasificar; edades y vehicle_year con NULL para Desconocido + cuarentena de atipicos (04); collision_time NULL se mantiene como TIME NULL (hora desconocida).' AS decision_normalizacion;

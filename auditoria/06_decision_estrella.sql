@@ -1,8 +1,8 @@
 -- 06_decision_estrella.sql
 -- EECA-UCV, Computacion II | Auditoria SWITRS California 2010-2019
--- Que responde: que campos van a lista cerrada y cuales quedan como texto libre o atributos.
--- Para el perfil de siniestros: el plano conceptual de dimensiones (fecha, condado,
--- severidad, entorno, vial, tipo, causa, lesion, actor con bandas no solapadas, vehiculo preservando vehicle_year).
+-- Que responde: que campos van a catalogo cerrado y cuales quedan como texto libre o atributos,
+-- y cual es el modelo objetivo de la Fase 2: un nucleo normalizado en 3FN (almacenamiento)
+-- y una capa de vistas en estrella para Power BI (consumo). Usa la evidencia de 01-05 y 07.
 
 INSTALL sqlite;
 LOAD sqlite;
@@ -204,32 +204,33 @@ WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
 GROUP BY county_location
 ORDER BY n_colisiones DESC, county_location;
 
--- D06 Flags candidatos a TINYINT en el fact (dominio 0/1 + nulos del periodo).
+-- D06 Flags del hecho colision (dominio 0/1 + nulos del periodo). Las banderas de tipo
+-- de colision son derivables de parties (07-N10) y no se almacenan en el nucleo 3FN.
 SELECT 'pedestrian_collision' AS flag,
        COUNT(DISTINCT pedestrian_collision) AS n_distintos,
        MIN(pedestrian_collision) AS minimo, MAX(pedestrian_collision) AS maximo,
        COUNT(*) - COUNT(pedestrian_collision) AS n_nulos,
-       'TINYINT' AS decision
+       'DERIVABLE_VISTA (07-N10)' AS decision
 FROM sw.collisions WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
 UNION ALL
 SELECT 'bicycle_collision', COUNT(DISTINCT bicycle_collision),
        MIN(bicycle_collision), MAX(bicycle_collision),
-       COUNT(*) - COUNT(bicycle_collision), 'TINYINT'
+       COUNT(*) - COUNT(bicycle_collision), 'DERIVABLE_VISTA (07-N10)'
 FROM sw.collisions WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
 UNION ALL
 SELECT 'motorcycle_collision', COUNT(DISTINCT motorcycle_collision),
        MIN(motorcycle_collision), MAX(motorcycle_collision),
-       COUNT(*) - COUNT(motorcycle_collision), 'TINYINT'
+       COUNT(*) - COUNT(motorcycle_collision), 'DERIVABLE_VISTA (07-N10)'
 FROM sw.collisions WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
 UNION ALL
 SELECT 'truck_collision', COUNT(DISTINCT truck_collision),
        MIN(truck_collision), MAX(truck_collision),
-       COUNT(*) - COUNT(truck_collision), 'TINYINT'
+       COUNT(*) - COUNT(truck_collision), 'DERIVABLE_VISTA (07-N10)'
 FROM sw.collisions WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01'
 UNION ALL
 SELECT 'alcohol_involved', COUNT(DISTINCT alcohol_involved),
        MIN(alcohol_involved), MAX(alcohol_involved),
-       COUNT(*) - COUNT(alcohol_involved), 'TINYINT_PRESERVAR_SEMANTICA_NULL'
+       COUNT(*) - COUNT(alcohol_involved), 'BOOLEAN_NULL_SEMANTICO (TRUE o NULL, nunca FALSE)'
 FROM sw.collisions WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01';
 
 -- D07 Cobertura de coordenadas: justifica tabla geo separada 1:0..1.
@@ -241,7 +242,9 @@ SELECT COUNT(*) AS n_total,
 FROM sw.collisions
 WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01';
 
--- D08 Prueba de surrogate determinista (muestra 10 filas; orden reproducible).
+-- D08 Prueba de surrogate determinista (muestra 10 filas; orden reproducible). Como case_id
+-- es numerico (07-N01) se usa directamente como PK INTEGER; el surrogate solo seria
+-- necesario si la fuente cambiara de formato.
 SELECT case_id, collision_date,
        ROW_NUMBER() OVER (ORDER BY collision_date, case_id) AS collision_sk
 FROM (SELECT DISTINCT case_id, collision_date
@@ -249,36 +252,53 @@ FROM (SELECT DISTINCT case_id, collision_date
       WHERE collision_date >= '2010-01-01' AND collision_date < '2020-01-01')
 LIMIT 10;
 
--- D09 Catalogo final recomendado de dimensiones para el modelo estrella (sin solapamiento de edades).
-SELECT 'dim_fecha' AS elemento, 'DIMENSION' AS decision,
-       'grano dia, PK natural fecha; precargar 3.652 dias (periodo decenal 2010-2019 completo)' AS justificacion
+-- D09 Modelo objetivo de la Fase 2.
+-- Nucleo 3FN: cada atributo depende solo de la clave de su tabla; nada derivable se almacena.
+-- Capa estrella: vistas sobre el nucleo para Power BI (no son tablas fisicas).
+SELECT 'colision' AS elemento, 'NUCLEO 3FN (4.368.293 filas)' AS decision,
+       'PK case_id INTEGER; fecha DATE; hora TIME NULL; FK ubicacion y catalogos de entorno, via, causa, tipo; banderas propias BOOLEAN (intersection, tow_away, state_highway_indicator, special_condition, alcohol_involved con NULL semantico); detalle nulable (jurisdiction, weather_2, road_condition_2, pedestrian_action, pcf_violation, pcf_violation_subsection): en almacenamiento columnar los nulos dispersos casi no ocupan espacio' AS justificacion
 UNION ALL
-SELECT 'dim_county', 'DIMENSION (58 filas)',
-       'county_location con 58 distintos verificados en el periodo (D05)'
+SELECT 'colision_geo', 'NUCLEO 3FN 1:0..1 (2.159.739 filas)',
+       'latitude/longitude solo con par completo dentro de CA (04-D1, 07)'
 UNION ALL
-SELECT 'dim_severidad', 'DIMENSION (5 categorias)',
-       'collision_severity (fatal, severe injury, other injury, pain, property damage only)'
+SELECT 'colision_carretera', 'NUCLEO 3FN 1:0..1 (904.581 filas)',
+       'bloque Caltrans (caltrans_county, caltrans_district, state_route, postmile_prefix, postmile, location_type, side_of_highway, ramp_intersection) nulo en bloque en 79,29% (07-N12)'
 UNION ALL
-SELECT 'dim_entorno', 'DIMENSION (fusion clima + iluminacion)',
-       'weather_1 y lighting acotados y del mismo grano del evento colision (D01)'
+SELECT 'parte', 'NUCLEO 3FN (8.688.142 filas)',
+       'PK (case_id, party_number); FK colision; tipo_parte, at_fault, sexo, edad UTINYINT, sobriedad, droga, movimiento, tipo_vehiculo, vehicle_year USMALLINT (Objetivo 4), vehicle_make texto, raza; detalle nulable (direction_of_travel, equipo_seguridad_1/2, financial_responsibility, cellphone_in_use, cellphone_use_type, hazardous_materials, school_bus_related, oaf_violation_category/section/suffix, other_associate_factor_1/2, chp_vehicle_type_towing/towed)'
 UNION ALL
-SELECT 'dim_vial', 'DIMENSION (fusion superficie + condicion + control)',
-       'road_surface, road_condition_1 y control_device acotados y del mismo grano (D01)'
+SELECT 'victima', 'NUCLEO 3FN (4.280.801 filas)',
+       'PK (case_id, party_number, victim_ordinal) (05-A06); FK parte; rol, sexo, edad, lesion, asiento, equipo, eyeccion'
 UNION ALL
-SELECT 'dim_tipo_colision', 'DIMENSION',
-       'type_of_collision de cardinalidad acotada (D01)'
+SELECT 'ubicacion', 'CATALOGO 3FN (542 filas)',
+       'county_city_location -> condado y poblacion (dependencia transitiva, 07-N04/N05)'
 UNION ALL
-SELECT 'dim_causa', 'DIMENSION (fusion factor + pcf, DEDUPLICADA)',
-       'primary_collision_factor y pcf_violation_category acotados; exige dedup de unknown'
+SELECT 'condado / poblacion', 'CATALOGOS (58 / 8 filas)',
+       'county_location y population extraidos de ubicacion'
 UNION ALL
-SELECT 'dim_grado_lesion', 'DIMENSION',
-       'victim_degree_of_injury acotado para el grano victimas'
+SELECT 'catalogos de codigos', 'CATALOGOS con id=0 Sin clasificar',
+       'clima, iluminacion, superficie, condicion_vial, dispositivo_control, factor_primario, categoria_pcf, tipo_colision, vehiculo_contra, hit_and_run, tipo_parte, sobriedad, droga_fisica, direccion, raza, sexo, rol_victima, asiento, equipo_seguridad, eyeccion, tipo_vehiculo'
 UNION ALL
-SELECT 'dim_actor', 'DIMENSION (fusion sexo + grupo_edad SIN INTERVALOS SOLAPADOS)',
-       'sexo + bandas excluyentes: 0-17 / 18-25 / 26-35 / 36-50 / 51-64 / 65+ / Desconocido tras cuarentena 998/999'
+SELECT 'lesion', 'CATALOGO homologado KABCO',
+       '8 codigos originales -> K/A/B/C/O + orden; absorbe el cambio de codificacion 2017-2018 (07-N14/N15)'
 UNION ALL
-SELECT 'dim_vehiculo', 'DIMENSION (PRESERVANDO vehicle_year)',
-       'statewide_vehicle_type y vehicle_year (1900-2020) requeridos explicitamente para el Objetivo 4; vehicle_make degenerado';
+SELECT 'dim_fecha', 'CATALOGO generado (3.652 filas)',
+       'calendario 2010-2019 completo (anio, mes, dia_semana, fin_de_semana)'
+UNION ALL
+SELECT 'vw_hecho_colision', 'VISTA ESTRELLA',
+       'severidad derivada (lesion maxima, 07-N08), conteos K/A/B/C, n_partes, banderas peaton/ciclista/moto/camion, tipo de vehiculo del culpable, tiene_coordenadas'
+UNION ALL
+SELECT 'vw_hecho_parte / vw_hecho_victima', 'VISTAS ESTRELLA',
+       'grano parte (Objetivos 2 y 4: conductor, edad en bandas 0-17/18-25/26-35/36-50/51-64/65+/Desconocido) y grano victima (lesion KABCO)'
+UNION ALL
+SELECT 'columnas derivables', 'NO SE ALMACENAN',
+       'killed_victims, injured_victims, severe_injury_count, other_visible_injury_count, complaint_of_pain_injury_count, pedestrian/bicyclist/motorcyclist_killed/injured_count, party_count, collision_severity, statewide/chp_vehicle_type_at_fault, pedestrian/bicycle/motorcycle/truck_collision, party_number_killed/injured (07-N06 a N10)'
+UNION ALL
+SELECT 'columnas sin informacion', 'NO SE MIGRAN',
+       'not_private_property (constante), pcf_violation_code (99,99% nulo), oaf_violation_code (100% nulo), route_suffix (99,96% nulo), parties.id, victims.id, tabla case_ids'
+UNION ALL
+SELECT 'columnas fuera de los objetivos', 'NO SE MIGRAN (recuperables desde la fuente por case_id)',
+       'administrativas y de texto libre: officer_id, reporting_district, beat_type, beat_number, chp_shift, chp_beat_type, chp_beat_class, city_division_lapd, chp_road_type, primary_road, secondary_road, distance, direction, primary_ramp, secondary_ramp, process_date';
 
--- D10 Cierre metodologico: plano conceptual de la estrella.
-SELECT 'DECISION_NORMALIZACION: modelo conceptual de 10 dimensiones con vehicle_year preservado para Objetivo 4; dim_actor con rangos etarios mutuamente excluyentes (51-64 y 65+ sin solapar); banderas como TINYINT (alcohol preservando NULL); geo en extension 1:0..1; no ejecutar transformaciones DDL hasta iniciar Fase 2.' AS decision_normalizacion;
+-- D10 Cierre metodologico: modelo objetivo de la Fase 2.
+SELECT 'DECISION_NORMALIZACION: nucleo 3FN de 5 tablas (colision, colision_geo, colision_carretera, parte, victima) + catalogo ubicacion y catalogos de codigos con id=0; ninguna columna derivable se almacena (se recalcula en vistas); case_id INTEGER, fechas DATE/TIME, ids de catalogo UTINYINT/USMALLINT, Parquet ZSTD particionado por anio; la estrella para Power BI son vistas (vw_hecho_colision, vw_hecho_parte, vw_hecho_victima) sobre el nucleo; vehicle_year preservado para el Objetivo 4; no ejecutar DDL hasta iniciar la Fase 2.' AS decision_normalizacion;

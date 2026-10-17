@@ -157,4 +157,4 @@ GROUP BY party_count
 ORDER BY party_count;
 
 -- Control F. Cierre: que cifras entran al perfil y cuales se apartan.
-SELECT 'DECISION_NORMALIZACION: party_count NO es medida aditiva (derivar COUNT desde parties); edades y vehicle_year solo tras CUARENTENA de 998/999 y fuera de rango (0-110 y 1900-2020); geo a tabla 1:0..1 con bbox CA lat 32-43 lon -125 a -114; party_count=0 o >20 a CUARENTENA.' AS decision_normalizacion;
+SELECT 'DECISION_NORMALIZACION: party_count, killed_victims, injured_victims y los demas conteos de collisions NO se almacenan (derivables, 07-N06): toda medida se calcula con COUNT sobre parte y victima, eliminando el riesgo de fan-out; edades (0-110) y vehicle_year (1900-2020) se almacenan como UTINYINT/USMALLINT y los atipicos (998/999, >110, 2021) quedan NULL con bandera de cuarentena, sin eliminar la fila (el valor crudo permanece en la fuente); geo 1:0..1 solo con par completo dentro del bbox CA (lat 32-43, lon -125 a -114).' AS decision_normalizacion;

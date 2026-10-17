@@ -107,6 +107,24 @@ HAVING COUNT(*) > 1
 ORDER BY victimas_por_parte DESC
 LIMIT 10;
 
+-- A06 victims: base de la clave subrogada (case_id, party_number, victim_ordinal).
+-- victim_ordinal = ROW_NUMBER() ordenado por id dentro de (case_id, party_number);
+-- es determinista si id no se repite dentro del grupo. Las filas identicas salvo id
+-- son personas distintas con el mismo perfil (p. ej. dos pasajeros), no duplicados.
+SELECT COUNT(*) AS total_victims,
+       (SELECT COUNT(*) FROM (
+            SELECT v.case_id, v.party_number, v.id FROM sw.victims AS v
+            WHERE EXISTS (SELECT 1 FROM sw.collisions AS c WHERE c.case_id = v.case_id
+                          AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01')
+            GROUP BY ALL HAVING COUNT(*) > 1)) AS id_repetido_dentro_de_parte,
+       COUNT(*) - (SELECT COUNT(*) FROM (
+            SELECT DISTINCT v.* EXCLUDE (id) FROM sw.victims AS v
+            WHERE EXISTS (SELECT 1 FROM sw.collisions AS c WHERE c.case_id = v.case_id
+                          AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01'))) AS filas_identicas_salvo_id
+FROM sw.victims AS v
+WHERE EXISTS (SELECT 1 FROM sw.collisions AS c WHERE c.case_id = v.case_id
+              AND c.collision_date >= '2010-01-01' AND c.collision_date < '2020-01-01');
+
 -- ============================================================================
 -- BLOQUE B: INTEGRIDAD REFERENCIAL Y REGISTROS HUERFANOS
 -- ============================================================================
@@ -147,7 +165,7 @@ SELECT COUNT(*) AS dias_en_dim_fecha_preexistente,
        MIN(fecha) AS fecha_min_preexistente,
        MAX(fecha) AS fecha_max_preexistente,
        CASE WHEN COUNT(*) = 3652 THEN 'COMPLETO'
-            ELSE 'INCOMPLETO: dim_fecha preexistente solo cubre 2016-2021 (2.191 dias); debe regenerarse para 2010-2019 (3.652 dias)'
+            ELSE 'INCOMPLETO: dim_fecha preexistente solo cubre 2016-2021 (2.192 dias); debe regenerarse para 2010-2019 (3.652 dias)'
        END AS diagnostico
 FROM sw.dim_fecha;
 
@@ -161,4 +179,4 @@ FROM sw.dim_categoria_pcf GROUP BY descripcion HAVING COUNT(*) > 1;
 -- ============================================================================
 -- BLOQUE D: CIERRE METODOLOGICO
 -- ============================================================================
-SELECT 'DECISION_NORMALIZACION: case_id es PK unica del hecho colisiones (0 nulos, 0 repetidos); (case_id, party_number) es clave candidata de parties; victims requiere clave subrogada por duplicado en columna id; integridad referencial verificada por NOT EXISTS (resultados a confirmar al ejecutar); las tablas dim_* preexistentes en SQLite corresponden al prototipo 2016-2021 y deben reconstruirse en Fase 2 para la decada 2010-2019.' AS decision_normalizacion;
+SELECT 'DECISION_NORMALIZACION: case_id (INTEGER, 07-N01) es PK de colision; (case_id, party_number) es PK de parte; parties.id y victims.id se descartan (no son claves: 3 y 1 duplicados); victima recibe PK compuesta (case_id, party_number, victim_ordinal) con ordinal determinista por id (A06); las filas de victimas identicas salvo id se conservan; FK victima -> parte -> colision verificadas por NOT EXISTS sin huerfanos; case_ids (case_id, db_year) es redundante con collisions y no se migra; las dim_* del prototipo 2016-2021 se descartan y se reconstruyen en Fase 2.' AS decision_normalizacion;
