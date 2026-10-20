@@ -44,7 +44,7 @@ Investigación descriptiva e inferencial sobre **colisiones de tránsito en Cali
 </div>
 
 > [!NOTE]
-> **Estado del proyecto:** las Fases 1 (auditoría) y 2 (normalización 3FN) están completadas y verificadas. La base normalizada está en [`data/processed/`](data/processed) como Parquet. La Fase 3 (inferencia) es la siguiente.
+> **Estado del proyecto:** las Fases 1 (auditoría) y 2 (normalización 3FN) están completadas y verificadas. La base normalizada está en [`data/processed/`](data/processed) como Parquet. La Fase 3, (inferencia) es la siguiente.
 
 ---
 
