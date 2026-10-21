@@ -1,0 +1,9 @@
+#Tema visual para la aplicacion, base tema oscuro y evitar el ruido visual
+
+[theme]
+base = "dark"
+primaryColor = "#5EA4E8"
+backgroundColor = "#0E1219"
+secondaryBackgroundColor = "#161C26"
+textColor = "#E9EEF6"
+font = "sans serif"
